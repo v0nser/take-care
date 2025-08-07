@@ -343,7 +343,7 @@ const LandingPage = () => {
         <div className="relative z-10 max-w-7xl mx-auto text-center">
 
           {/* Badge */}
-          <div className="mb-8 animate-slide-in-up">
+          <div className="mt-4 mb-8 animate-slide-in-up">
             <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-full border border-blue-200 dark:border-blue-700 backdrop-blur-sm">
               <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
               <span className="text-sm font-medium font-inter text-blue-800 dark:text-blue-300">Next-Generation Healthcare Platform</span>
