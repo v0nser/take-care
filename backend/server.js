@@ -30,7 +30,11 @@ const server = createServer(app);
 // Socket.IO setup for real-time notifications
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:5173",
+      "https://take-care-dev.netlify.app",
+      "https://take-care.netlify.app"
+    ],
     methods: ["GET", "POST"]
   }
 });
@@ -40,7 +44,11 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: [
+    process.env.FRONTEND_URL || "http://localhost:5173",
+    "https://take-care-dev.netlify.app",
+    "https://take-care.netlify.app"
+  ],
   credentials: true
 }));
 
