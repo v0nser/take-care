@@ -27,15 +27,21 @@ process.setMaxListeners(20);
 const app = express();
 const server = createServer(app);
 
+// Define allowed origins
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "https://take-care-dev.netlify.app",
+  "https://take-care.netlify.app",
+  "https://take-care.netlify.app"
+];
+
 // Socket.IO setup for real-time notifications
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_URL || "http://localhost:5173",
-      "https://take-care-dev.netlify.app",
-      "https://take-care.netlify.app"
-    ],
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
   }
 });
 
@@ -44,11 +50,9 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || "http://localhost:5173",
-    "https://take-care-dev.netlify.app",
-    "https://take-care.netlify.app"
-  ],
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
