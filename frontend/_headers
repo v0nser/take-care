@@ -1,0 +1,11 @@
+/* 
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.js
+  Content-Type: application/javascript
+
+/*.css
+  Content-Type: text/css
+
+/*.wasm
+  Content-Type: application/wasm
