@@ -31,6 +31,7 @@ import SettingsPage from './pages/SettingsPage';
 import AppointmentBookingPage from './pages/AppointmentBookingPage';
 import DoctorAvailabilityPage from './pages/DoctorAvailabilityPage';
 import AppointmentManagementPage from './pages/AppointmentManagementPage';
+import AppointmentsPage from './pages/AppointmentsPage';
 
 // Development Tools
 import DatabaseSeederPage from './pages/DatabaseSeederPage';
@@ -46,6 +47,13 @@ import {
   PatientsPage,
   SchedulePage
 } from './pages/PlaceholderPages';
+
+// Services Pages
+import ServicesPage from './pages/ServicesPage';
+import ServiceDetailPage from './pages/ServiceDetailPage';
+
+// Teleconsultation
+import TeleconsultationInterface from './components/appointments/TeleconsultationInterface';
 
 // Auth-specific App component
 const AppContent = () => {
@@ -79,9 +87,9 @@ const AppContent = () => {
 
   return (
     <div className="App">
-      {isSignedIn ? (
-          <Routes>
-            <Route path="/role-selection" element={<RoleSelection />} />
+      <Routes>
+        {isSignedIn ? (
+          <>
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<Navigate to={getDashboardPath()} replace />} />
               
@@ -95,7 +103,7 @@ const AppContent = () => {
               <Route path="admin" element={<AdminDashboard />} />
               
               {/* Common Dashboard Pages */}
-              <Route path="appointments" element={<PlaceholderAppointments />} />
+              <Route path="appointments" element={<AppointmentsPage />} />
               <Route path="appointments/book" element={<AppointmentBookingPage />} />
               <Route path="appointments/manage" element={<AppointmentManagementPage />} />
               <Route path="doctors" element={<DoctorsPage />} />
@@ -106,12 +114,16 @@ const AppContent = () => {
               <Route path="settings" element={<SettingsPage />} />
               <Route path="profile" element={<PlaceholderProfile />} />
               <Route path="availability" element={<DoctorAvailabilityPage />} />
+              
+              {/* Services within dashboard - with navigation */}
+              <Route path="services" element={<ServicesPage />} />
+              <Route path="services/:specialtyId" element={<ServiceDetailPage />} />
             </Route>
             
-            {/* Appointment-specific routes outside dashboard layout */}
-            {/* <Route path="/appointments/book" element={<AppointmentBookingPage />} /> */}
-            {/* <Route path="/appointments/manage" element={<AppointmentManagementPage />} /> */}
-            {/* <Route path="/availability" element={<DoctorAvailabilityPage />} /> */}
+            {/* Teleconsultation Route - Outside dashboard layout for full-screen */}
+            <Route path="/teleconsultation/:appointmentId" element={<TeleconsultationInterface />} />
+            
+            <Route path="/role-selection" element={<RoleSelection />} />
             
             {/* Development tools */}
             <Route path="/dev/seed" element={<DatabaseSeederPage />} />
@@ -122,19 +134,25 @@ const AppContent = () => {
               <Navigate to="/role-selection" replace /> : 
               <Navigate to={getDashboardPath()} replace />
             } />
-          </Routes>
-      ) : (
-        <Routes>
-          <Route path="/" element={<PublicLayout />}>
-            <Route index element={<LandingPage />} />
-            <Route path="about" element={<AboutPage />} />
-            <Route path="contact" element={<ContactPage />} />
-            <Route path="login" element={<LoginPage />} />
-            <Route path="register" element={<RegisterPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      )}
+          </>
+        ) : (
+          <>
+            <Route path="/" element={<PublicLayout />}>
+              <Route index element={<LandingPage />} />
+              <Route path="about" element={<AboutPage />} />
+              <Route path="contact" element={<ContactPage />} />
+              <Route path="login" element={<LoginPage />} />
+              <Route path="register" element={<RegisterPage />} />
+            </Route>
+            
+            {/* Services routes - accessible to unauthenticated users */}
+            <Route path="/services" element={<ServicesPage />} />
+            <Route path="/services/:specialtyId" element={<ServiceDetailPage />} />
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </>
+        )}
+      </Routes>
     </div>
   );
 };

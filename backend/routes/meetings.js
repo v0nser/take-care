@@ -424,4 +424,364 @@ router.get('/history', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * @route   POST /api/meetings/:appointmentId/start
+ * @desc    Start a teleconsultation meeting
+ * @access  Private (Doctor/Patient)
+ */
+router.post('/:appointmentId/start', authenticate, logActivity('meeting_start', 'meeting'), async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.appointmentId)
+      .populate('patient', 'firstName lastName profileImage')
+      .populate('doctor', 'firstName lastName specialization profileImage');
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Check if user has access to this appointment
+    const hasAccess = 
+      appointment.patient._id.toString() === req.user._id.toString() ||
+      appointment.doctor._id.toString() === req.user._id.toString();
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Check if appointment is teleconsultation type
+    if (appointment.consultationType !== 'teleconsultation') {
+      return res.status(400).json({
+        success: false,
+        message: 'This appointment is not a teleconsultation'
+      });
+    }
+
+    // Check if appointment is confirmed
+    if (appointment.status !== 'confirmed' && appointment.status !== 'in-progress') {
+      return res.status(400).json({
+        success: false,
+        message: 'Appointment must be confirmed before starting the meeting'
+      });
+    }
+
+    // Start the meeting
+    await appointment.startMeeting(req.user._id);
+
+    // Notify the other participant
+    const otherParticipantId = appointment.patient._id.toString() === req.user._id.toString() 
+      ? appointment.doctor._id 
+      : appointment.patient._id;
+
+    req.io.to(`user_${otherParticipantId}`).emit('meeting_started', {
+      appointment,
+      message: 'The teleconsultation meeting has started',
+      meetingLink: appointment.meetingLink
+    });
+
+    res.json({
+      success: true,
+      message: 'Meeting started successfully',
+      meeting: {
+        appointmentId: appointment._id,
+        meetingId: appointment.meetingId,
+        meetingLink: appointment.meetingLink,
+        jitsiRoomName: appointment.jitsiRoomName,
+        status: appointment.status,
+        startTime: appointment.meetingStartTime
+      }
+    });
+  } catch (error) {
+    console.error('Error starting meeting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error starting meeting'
+    });
+  }
+});
+
+/**
+ * @route   POST /api/meetings/:appointmentId/end
+ * @desc    End a teleconsultation meeting
+ * @access  Private (Doctor/Patient)
+ */
+router.post('/:appointmentId/end', authenticate, logActivity('meeting_end', 'meeting'), async (req, res) => {
+  try {
+    const { diagnosis, prescription, notes } = req.body;
+    
+    const appointment = await Appointment.findById(req.params.appointmentId);
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Check if user has access to this appointment
+    const hasAccess = 
+      appointment.patient._id.toString() === req.user._id.toString() ||
+      appointment.doctor._id.toString() === req.user._id.toString();
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // End the meeting
+    await appointment.endMeeting(req.user._id);
+
+    // If doctor is ending the meeting, they can complete the appointment
+    if (req.user.role === 'doctor' && (diagnosis || prescription || notes)) {
+      appointment.status = 'completed';
+      if (diagnosis) appointment.diagnosis = diagnosis;
+      if (prescription) appointment.prescription = prescription;
+      if (notes) appointment.notes.doctor = notes;
+      await appointment.save();
+    }
+
+    await appointment.populate(['patient', 'doctor']);
+
+    // Notify the other participant
+    const otherParticipantId = appointment.patient._id.toString() === req.user._id.toString() 
+      ? appointment.doctor._id 
+      : appointment.patient._id;
+
+    req.io.to(`user_${otherParticipantId}`).emit('meeting_ended', {
+      appointment,
+      message: 'The teleconsultation meeting has ended'
+    });
+
+    res.json({
+      success: true,
+      message: 'Meeting ended successfully',
+      appointment
+    });
+  } catch (error) {
+    console.error('Error ending meeting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error ending meeting'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/meetings/:appointmentId/join
+ * @desc    Get meeting join details
+ * @access  Private (Doctor/Patient)
+ */
+router.get('/:appointmentId/join', authenticate, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.appointmentId)
+      .populate('patient', 'firstName lastName profileImage')
+      .populate('doctor', 'firstName lastName specialization profileImage');
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Check if user has access to this appointment
+    const hasAccess = 
+      appointment.patient._id.toString() === req.user._id.toString() ||
+      appointment.doctor._id.toString() === req.user._id.toString();
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Check if appointment is teleconsultation type
+    if (appointment.consultationType !== 'teleconsultation') {
+      return res.status(400).json({
+        success: false,
+        message: 'This appointment is not a teleconsultation'
+      });
+    }
+
+    // Check if meeting link exists
+    if (!appointment.meetingLink) {
+      return res.status(400).json({
+        success: false,
+        message: 'Meeting link not available. Please wait for appointment confirmation.'
+      });
+    }
+
+    res.json({
+      success: true,
+      meeting: {
+        appointmentId: appointment._id,
+        meetingId: appointment.meetingId,
+        meetingLink: appointment.meetingLink,
+        jitsiRoomName: appointment.jitsiRoomName,
+        status: appointment.status,
+        appointmentDate: appointment.appointmentDate,
+        appointmentTime: appointment.appointmentTime,
+        patient: appointment.patient,
+        doctor: appointment.doctor,
+        meetingStarted: appointment.meetingStarted,
+        meetingStartTime: appointment.meetingStartTime
+      }
+    });
+  } catch (error) {
+    console.error('Error getting meeting details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting meeting details'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/meetings/upcoming
+ * @desc    Get upcoming teleconsultations for user
+ * @access  Private
+ */
+router.get('/upcoming', authenticate, async (req, res) => {
+  try {
+    const appointments = await Appointment.getUpcomingTeleconsultations(req.user._id, req.user.role);
+
+    res.json({
+      success: true,
+      appointments
+    });
+  } catch (error) {
+    console.error('Error fetching upcoming teleconsultations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching upcoming teleconsultations'
+    });
+  }
+});
+
+/**
+ * @route   POST /api/meetings/:appointmentId/join-notification
+ * @desc    Notify participants when someone joins the meeting
+ * @access  Private (Doctor/Patient)
+ */
+router.post('/:appointmentId/join-notification', authenticate, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.appointmentId)
+      .populate('patient', 'firstName lastName')
+      .populate('doctor', 'firstName lastName');
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Check if user has access to this appointment
+    const hasAccess = 
+      appointment.patient._id.toString() === req.user._id.toString() ||
+      appointment.doctor._id.toString() === req.user._id.toString();
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Update attendee join time if not already set
+    const attendee = appointment.meetingAttendees.find(a => a.userId.toString() === req.user._id.toString());
+    if (!attendee) {
+      appointment.meetingAttendees.push({
+        userId: req.user._id,
+        joinedAt: new Date()
+      });
+      await appointment.save();
+    }
+
+    // Notify the other participant
+    const otherParticipantId = appointment.patient._id.toString() === req.user._id.toString() 
+      ? appointment.doctor._id 
+      : appointment.patient._id;
+
+    const userName = req.user.role === 'doctor' 
+      ? `Dr. ${req.user.firstName} ${req.user.lastName}`
+      : `${req.user.firstName} ${req.user.lastName}`;
+
+    req.io.to(`user_${otherParticipantId}`).emit('participant_joined', {
+      appointmentId: appointment._id,
+      participant: {
+        id: req.user._id,
+        name: userName,
+        role: req.user.role
+      },
+      message: `${userName} has joined the meeting`
+    });
+
+    res.json({
+      success: true,
+      message: 'Join notification sent'
+    });
+  } catch (error) {
+    console.error('Error sending join notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error sending join notification'
+    });
+  }
+});
+
+/**
+ * @route   PUT /api/meetings/:appointmentId/pre-consultation
+ * @desc    Update pre-consultation form for teleconsultation
+ * @access  Private (Patient)
+ */
+router.put('/:appointmentId/pre-consultation', authenticate, authorize('patient'), async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.appointmentId);
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Check if patient owns this appointment
+    if (appointment.patient.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    // Update pre-consultation form
+    appointment.preConsultationForm = {
+      ...appointment.preConsultationForm,
+      ...req.body
+    };
+
+    await appointment.save();
+
+    res.json({
+      success: true,
+      message: 'Pre-consultation form updated successfully',
+      preConsultationForm: appointment.preConsultationForm
+    });
+  } catch (error) {
+    console.error('Error updating pre-consultation form:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating pre-consultation form'
+    });
+  }
+});
+
 export default router;

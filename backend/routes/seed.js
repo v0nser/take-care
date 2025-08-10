@@ -24,11 +24,11 @@ router.post('/database', async (req, res) => {
       success: true,
       message: 'Database seeded successfully with sample data',
       data: {
-        doctors: 6,
+        doctors: 24,
         patients: 3,
         admin: 1,
         appointments: 3,
-        availability: 6
+        availability: 24
       },
       credentials: {
         admin: {

@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { useApi } from '../../contexts/ApiContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-  Calendar, Clock, User, Check, X, Video, MessageSquare, 
-  FileText, Phone, Mail, Filter, Search, ChevronDown, ExternalLink, 
-  Monitor, Users, MapPin
+  Calendar, Clock, User, X, Video, 
+  FileText, Search, Monitor, MapPin, Plus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
-const AppointmentManagement = () => {
+const PatientAppointments = () => {
   const { appointments: appointmentsApi } = useApi();
   const { user } = useAuth();
   
@@ -28,11 +28,8 @@ const AppointmentManagement = () => {
   });
   
   // Modal states
-  const [modalAction, setModalAction] = useState(null); // 'accept', 'reject', 'complete', 'view'
+  const [modalAction, setModalAction] = useState(null); // 'view', 'cancel'
   const [actionData, setActionData] = useState({
-    notes: '',
-    diagnosis: '',
-    prescription: [],
     cancellationReason: ''
   });
 
@@ -71,8 +68,7 @@ const AppointmentManagement = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-              const response = await appointmentsApi.getAll({
-        doctorId: user._id,
+      const response = await appointmentsApi.getAll({
         page: 1,
         limit: 50
       });
@@ -110,8 +106,9 @@ const AppointmentManagement = () => {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(apt => 
-        apt.patient?.firstName?.toLowerCase().includes(searchLower) ||
-        apt.patient?.lastName?.toLowerCase().includes(searchLower) ||
+        apt.doctor?.firstName?.toLowerCase().includes(searchLower) ||
+        apt.doctor?.lastName?.toLowerCase().includes(searchLower) ||
+        apt.doctor?.specialization?.toLowerCase().includes(searchLower) ||
         apt.reason?.toLowerCase().includes(searchLower) ||
         apt.symptoms?.some(symptom => symptom.toLowerCase().includes(searchLower))
       );
@@ -126,29 +123,11 @@ const AppointmentManagement = () => {
       let response;
       
       switch (action) {
-        case 'accept':
-          response = await appointmentsApi.updateStatus(selectedAppointment._id, {
-            status: 'confirmed',
-            notes: actionData.notes
-          });
-          toast.success('Appointment confirmed successfully');
-          break;
-          
-        case 'reject':
-          response = await appointmentsApi.updateStatus(selectedAppointment._id, {
-            status: 'cancelled',
+        case 'cancel':
+          response = await appointmentsApi.cancel(selectedAppointment._id, {
             cancellationReason: actionData.cancellationReason
           });
-          toast.success('Appointment cancelled');
-          break;
-          
-        case 'complete':
-          response = await appointmentsApi.complete(selectedAppointment._id, {
-            diagnosis: actionData.diagnosis,
-            prescription: actionData.prescription.filter(p => p.medicine),
-            notes: actionData.notes
-          });
-          toast.success('Appointment completed successfully');
+          toast.success('Appointment cancelled successfully');
           break;
       }
       
@@ -168,9 +147,6 @@ const AppointmentManagement = () => {
     setSelectedAppointment(appointment);
     setModalAction(action);
     setActionData({
-      notes: '',
-      diagnosis: '',
-      prescription: [{ medicine: '', dosage: '', frequency: '', duration: '', instructions: '' }],
       cancellationReason: ''
     });
     setShowModal(true);
@@ -181,37 +157,8 @@ const AppointmentManagement = () => {
     setModalAction(null);
     setShowModal(false);
     setActionData({
-      notes: '',
-      diagnosis: '',
-      prescription: [],
       cancellationReason: ''
     });
-  };
-
-  const addPrescriptionItem = () => {
-    setActionData(prev => ({
-      ...prev,
-      prescription: [
-        ...prev.prescription,
-        { medicine: '', dosage: '', frequency: '', duration: '', instructions: '' }
-      ]
-    }));
-  };
-
-  const updatePrescriptionItem = (index, field, value) => {
-    setActionData(prev => ({
-      ...prev,
-      prescription: prev.prescription.map((item, i) => 
-        i === index ? { ...item, [field]: value } : item
-      )
-    }));
-  };
-
-  const removePrescriptionItem = (index) => {
-    setActionData(prev => ({
-      ...prev,
-      prescription: prev.prescription.filter((_, i) => i !== index)
-    }));
   };
 
   const openJitsiMeeting = (appointment) => {
@@ -234,16 +181,14 @@ const AppointmentManagement = () => {
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-white">
-              {appointment.patient?.firstName} {appointment.patient?.lastName}
+              Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {appointment.patient?.email}
+              {appointment.doctor?.specialization}
             </p>
-            {appointment.patient?.phone && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {appointment.patient?.phone}
-              </p>
-            )}
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              ₹{appointment.doctor?.consultationFee}
+            </p>
           </div>
         </div>
         
@@ -364,30 +309,12 @@ const AppointmentManagement = () => {
       <div className="flex items-center justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-2">
           {appointment.status === 'pending' && (
-            <>
-              <button
-                onClick={() => openModal(appointment, 'reject')}
-                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                title="Reject Appointment"
-              >
-                <X className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => openModal(appointment, 'accept')}
-                className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                title="Accept Appointment"
-              >
-                <Check className="h-4 w-4" />
-              </button>
-            </>
-          )}
-          
-          {appointment.status === 'confirmed' && (
             <button
-              onClick={() => openModal(appointment, 'complete')}
-              className="btn-primary text-sm"
+              onClick={() => openModal(appointment, 'cancel')}
+              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              title="Cancel Appointment"
             >
-              Complete Consultation
+              <X className="h-4 w-4" />
             </button>
           )}
           
@@ -403,229 +330,27 @@ const AppointmentManagement = () => {
     </div>
   );
 
-  const renderModal = () => {
-    if (!showModal || !selectedAppointment) return null;
-
-    return (
-      <div className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-          <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={closeModal} />
-          
-          <div className="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-800 shadow-xl rounded-lg">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {modalAction === 'accept' && 'Accept Appointment'}
-                {modalAction === 'reject' && 'Reject Appointment'}
-                {modalAction === 'complete' && 'Complete Consultation'}
-                {modalAction === 'view' && 'Appointment Details'}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Patient Info */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 dark:text-white mb-2">Patient Information</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Name:</span>
-                    <span className="ml-2 text-gray-900 dark:text-white">
-                      {selectedAppointment.patient?.firstName} {selectedAppointment.patient?.lastName}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Date:</span>
-                    <span className="ml-2 text-gray-900 dark:text-white">
-                      {format(new Date(selectedAppointment.appointmentDate), 'MMM d, yyyy')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Time:</span>
-                    <span className="ml-2 text-gray-900 dark:text-white">
-                      {selectedAppointment.appointmentTime}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600 dark:text-gray-400">Reason:</span>
-                    <span className="ml-2 text-gray-900 dark:text-white">
-                      {selectedAppointment.reason}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action-specific forms */}
-              {modalAction === 'accept' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Notes (optional)
-                  </label>
-                  <textarea
-                    value={actionData.notes}
-                    onChange={(e) => setActionData(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Add any notes for the patient..."
-                    rows={3}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800"
-                  />
-                </div>
-              )}
-
-              {modalAction === 'reject' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Cancellation Reason *
-                  </label>
-                  <textarea
-                    value={actionData.cancellationReason}
-                    onChange={(e) => setActionData(prev => ({ ...prev, cancellationReason: e.target.value }))}
-                    placeholder="Please provide a reason for cancellation..."
-                    rows={3}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800"
-                    required
-                  />
-                </div>
-              )}
-
-              {modalAction === 'complete' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Diagnosis
-                    </label>
-                    <textarea
-                      value={actionData.diagnosis}
-                      onChange={(e) => setActionData(prev => ({ ...prev, diagnosis: e.target.value }))}
-                      placeholder="Enter diagnosis..."
-                      rows={3}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Prescription
-                      </label>
-                      <button
-                        onClick={addPrescriptionItem}
-                        className="btn-outline text-sm"
-                      >
-                        Add Medicine
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {actionData.prescription.map((item, index) => (
-                        <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <input
-                              type="text"
-                              placeholder="Medicine name"
-                              value={item.medicine}
-                              onChange={(e) => updatePrescriptionItem(index, 'medicine', e.target.value)}
-                              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-sm"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Dosage"
-                              value={item.dosage}
-                              onChange={(e) => updatePrescriptionItem(index, 'dosage', e.target.value)}
-                              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-sm"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Frequency"
-                              value={item.frequency}
-                              onChange={(e) => updatePrescriptionItem(index, 'frequency', e.target.value)}
-                              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-sm"
-                            />
-                            <div className="flex space-x-2">
-                              <input
-                                type="text"
-                                placeholder="Duration"
-                                value={item.duration}
-                                onChange={(e) => updatePrescriptionItem(index, 'duration', e.target.value)}
-                                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-sm"
-                              />
-                              <button
-                                onClick={() => removePrescriptionItem(index)}
-                                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                          <textarea
-                            placeholder="Instructions"
-                            value={item.instructions}
-                            onChange={(e) => updatePrescriptionItem(index, 'instructions', e.target.value)}
-                            rows={2}
-                            className="w-full mt-2 p-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-sm"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Doctor Notes
-                    </label>
-                    <textarea
-                      value={actionData.notes}
-                      onChange={(e) => setActionData(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="Additional notes..."
-                      rows={3}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            {modalAction !== 'view' && (
-              <div className="flex items-center justify-end space-x-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={closeModal}
-                  className="btn-outline"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleAppointmentAction(modalAction)}
-                  disabled={loading || (modalAction === 'reject' && !actionData.cancellationReason)}
-                  className="btn-primary disabled:opacity-50"
-                >
-                  {loading ? 'Processing...' : 
-                    modalAction === 'accept' ? 'Accept Appointment' :
-                    modalAction === 'reject' ? 'Reject Appointment' :
-                    'Complete Consultation'
-                  }
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Appointment Management
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Manage your appointment requests and consultations
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              My Appointments
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              View and manage all your appointments
+            </p>
+          </div>
+          <Link
+            to="/dashboard/appointments/book"
+            className="btn-primary inline-flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Book New Appointment
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -701,7 +426,7 @@ const AppointmentManagement = () => {
               type="text"
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              placeholder="Search by patient name, email, reason, or symptoms..."
+              placeholder="Search by doctor name, specialization, reason, or symptoms..."
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-sm"
             />
           </div>
@@ -726,6 +451,13 @@ const AppointmentManagement = () => {
               : 'You have no appointments scheduled yet.'
             }
           </p>
+          <Link
+            to="/dashboard/appointments/book"
+            className="btn-primary mt-4 inline-flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Book Your First Appointment
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -734,9 +466,111 @@ const AppointmentManagement = () => {
       )}
 
       {/* Modal */}
-      {renderModal()}
+      {showModal && selectedAppointment && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={closeModal} />
+            
+            <div className="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-800 shadow-xl rounded-lg">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {modalAction === 'cancel' && 'Cancel Appointment'}
+                  {modalAction === 'view' && 'Appointment Details'}
+                </h3>
+                <button
+                  onClick={closeModal}
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Doctor Info */}
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Doctor Information</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Name:</span>
+                      <span className="ml-2 text-gray-900 dark:text-white">
+                        Dr. {selectedAppointment.doctor?.firstName} {selectedAppointment.doctor?.lastName}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Specialization:</span>
+                      <span className="ml-2 text-gray-900 dark:text-white">
+                        {selectedAppointment.doctor?.specialization}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Date:</span>
+                      <span className="ml-2 text-gray-900 dark:text-white">
+                        {format(new Date(selectedAppointment.appointmentDate), 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Time:</span>
+                      <span className="ml-2 text-gray-900 dark:text-white">
+                        {selectedAppointment.appointmentTime}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Reason:</span>
+                      <span className="ml-2 text-gray-900 dark:text-white">
+                        {selectedAppointment.reason}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Fee:</span>
+                      <span className="ml-2 text-gray-900 dark:text-white">
+                        ₹{selectedAppointment.consultationFee}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action-specific forms */}
+                {modalAction === 'cancel' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Cancellation Reason *
+                    </label>
+                    <textarea
+                      value={actionData.cancellationReason}
+                      onChange={(e) => setActionData(prev => ({ ...prev, cancellationReason: e.target.value }))}
+                      placeholder="Please provide a reason for cancellation..."
+                      rows={3}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800"
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              {modalAction !== 'view' && (
+                <div className="flex items-center justify-end space-x-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={closeModal}
+                    className="btn-outline"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleAppointmentAction(modalAction)}
+                    disabled={loading || (modalAction === 'cancel' && !actionData.cancellationReason)}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    {loading ? 'Processing...' : 'Cancel Appointment'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default AppointmentManagement; 
+export default PatientAppointments;

@@ -34,6 +34,7 @@ import { Link } from 'react-router-dom';
 
 import Footer from '../components/layouts/Footer.jsx';
 import Navbar from '../components/layouts/Navbar.jsx';
+import { getPopularSpecialties } from '../utils/servicesData';
 
 // Enhanced custom styles with more sophisticated animations
 const customStyles = `
@@ -439,6 +440,81 @@ const LandingPage = () => {
             {features.map((feature, index) => (
               <FeatureCard key={index} feature={feature} index={index} />
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Services Preview Section */}
+      <section className="relative py-32 px-6 lg:px-8 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 dark:from-blue-900/10 dark:via-purple-900/10 dark:to-pink-900/10">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <div className="inline-block px-6 py-3 bg-gradient-to-r from-green-100 to-blue-100 dark:from-green-900/30 dark:to-blue-900/30 rounded-full mb-6">
+              <span className="text-sm font-medium font-inter text-green-800 dark:text-green-300">Medical Excellence</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-playfair font-bold mb-8">
+              <span className="text-gradient-primary">
+                Comprehensive medical
+              </span>
+              <br />
+              <span className="text-gradient-secondary">
+                specialties under one roof
+              </span>
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto font-inter mb-8">
+              Expert healthcare across 25+ medical specialties with state-of-the-art facilities and renowned specialists.
+            </p>
+            <Link 
+              to="/services"
+              className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+            >
+              <Stethoscope className="h-5 w-5" />
+              <span>Explore All Services</span>
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {getPopularSpecialties().slice(0, 8).map((specialty, index) => {
+              const Icon = specialty.icon;
+              return (
+                <div
+                  key={specialty.id}
+                  className="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl p-6 hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 hover:scale-105"
+                  style={{
+                    animationDelay: `${index * 100}ms`
+                  }}
+                >
+                  <div className={`p-4 rounded-xl bg-gradient-to-r ${specialty.color} shadow-lg mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className="h-8 w-8 text-white" />
+                  </div>
+                  
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {specialty.name}
+                  </h3>
+                  
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                    {specialty.description.slice(0, 80)}...
+                  </p>
+
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-green-600 dark:text-green-400 font-medium">
+                      {specialty.consultationFee}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {specialty.waitTime}
+                    </span>
+                  </div>
+
+                  <Link
+                    to={`/services/${specialty.id}`}
+                    className="mt-4 inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium text-sm group-hover:translate-x-1 transition-all duration-300"
+                  >
+                    Learn More
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

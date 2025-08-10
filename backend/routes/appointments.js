@@ -20,7 +20,8 @@ router.post('/', authenticate, authorize('patient'), logActivity('appointment_bo
       appointmentTime,
       reason,
       symptoms,
-      type = 'consultation'
+      type = 'consultation',
+      consultationType = 'in-person'
     } = req.body;
 
     // Validate required fields
@@ -101,6 +102,7 @@ router.post('/', authenticate, authorize('patient'), logActivity('appointment_bo
       reason,
       symptoms: symptoms || [],
       type,
+      consultationType,
       consultationFee: doctor.consultationFee || 500
     });
 

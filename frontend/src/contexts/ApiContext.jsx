@@ -120,17 +120,6 @@ export const ApiProvider = ({ children }) => {
       share: (id, data) => api.post(`/medical-records/${id}/share`, data),
     },
 
-    // Meeting endpoints
-    meetings: {
-      create: (data) => api.post('/meetings/create', data),
-      getByAppointment: (appointmentId) => api.get(`/meetings/appointment/${appointmentId}`),
-      join: (appointmentId) => api.post(`/meetings/${appointmentId}/join`),
-      end: (appointmentId, data) => api.post(`/meetings/${appointmentId}/end`, data),
-      getConfig: () => api.get('/meetings/config'),
-      getActive: () => api.get('/meetings/active'),
-      getHistory: (params) => api.get('/meetings/history', { params }),
-    },
-
     // Notification endpoints
     notifications: {
       getAll: () => api.get('/notifications'),
@@ -146,6 +135,16 @@ export const ApiProvider = ({ children }) => {
       getActions: () => api.get('/logs/actions'),
       getResources: () => api.get('/logs/resources'),
       cleanup: (params) => api.delete('/logs/cleanup', { params }),
+    },
+
+    // Meetings/Teleconsultation endpoints
+    meetings: {
+      joinMeeting: (appointmentId) => api.get(`/meetings/${appointmentId}/join`),
+      startMeeting: (appointmentId) => api.post(`/meetings/${appointmentId}/start`),
+      endMeeting: (appointmentId, data = {}) => api.post(`/meetings/${appointmentId}/end`, data),
+      getUpcoming: () => api.get('/meetings/upcoming'),
+      sendJoinNotification: (appointmentId) => api.post(`/meetings/${appointmentId}/join-notification`),
+      updatePreConsultation: (appointmentId, data) => api.put(`/meetings/${appointmentId}/pre-consultation`, data),
     },
   }
 

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 
 const LoginPage = () => {
   const { login, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -60,8 +61,15 @@ const LoginPage = () => {
 
     try {
       await login(formData);
-      // Redirect will be handled by App.jsx based on user role
-      navigate('/dashboard');
+      // Check for return URL from query params
+      const returnUrl = searchParams.get('returnUrl');
+      if (returnUrl) {
+        // Decode and navigate to the return URL
+        navigate(decodeURIComponent(returnUrl));
+      } else {
+        // Default redirect to dashboard
+        navigate('/dashboard');
+      }
     } catch (err) {
       console.error('Login failed:', err);
       // Error is handled by context
@@ -207,7 +215,7 @@ const LoginPage = () => {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Don't have an account?{' '}
               <Link 
-                to="/register" 
+                to={`/register${searchParams.get('returnUrl') ? `?returnUrl=${searchParams.get('returnUrl')}` : ''}`}
                 className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Create one here

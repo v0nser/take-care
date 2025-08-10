@@ -49,10 +49,12 @@ router.get('/doctor/:doctorId', authenticate, async (req, res) => {
         status: { $in: ['pending', 'confirmed'] }
       });
 
-      // Mark booked slots
+      // Mark booked slots - Convert Mongoose subdocs to plain objects
       const slots = availability.slots.map(slot => ({
-        ...slot,
-        isBooked: existingAppointments.some(apt => apt.appointmentTime === slot.startTime)
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        isBooked: existingAppointments.some(apt => apt.appointmentTime === slot.startTime),
+        appointmentId: slot.appointmentId
       }));
 
       return res.json({
@@ -83,8 +85,10 @@ router.get('/doctor/:doctorId', authenticate, async (req, res) => {
         });
 
         const slots = dayAvailability.slots.map(slot => ({
-          ...slot,
-          isBooked: existingAppointments.some(apt => apt.appointmentTime === slot.startTime)
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          isBooked: existingAppointments.some(apt => apt.appointmentTime === slot.startTime),
+          appointmentId: slot.appointmentId
         }));
 
         availabilityData.push({

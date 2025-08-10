@@ -1,6 +1,7 @@
 import { useAuth } from '../../contexts/AuthContext'
 import { Calendar, Users, FileText, CreditCard, Clock, Heart } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import ServicesSection from '../../components/services/ServicesSection'
 
 const PatientDashboard = () => {
   const { user } = useAuth()
@@ -191,6 +192,13 @@ const PatientDashboard = () => {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Medical Services Section */}
+      <div className="card">
+        <div className="card-content">
+          <ServicesSection showTitle={true} maxItems={8} showViewAll={true} />
         </div>
       </div>
     </div>

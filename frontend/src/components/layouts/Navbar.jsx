@@ -6,6 +6,7 @@ import ConnectionStatus from '../ui/ConnectionStatus';
 
 const navLinks = [
   { name: 'Home', href: '/' },
+  { name: 'Services', href: '/services' },
   { name: 'Features', href: '/#features' },
   { name: 'Pricing', href: '/#pricing' },
   { name: 'About', href: '/about' },

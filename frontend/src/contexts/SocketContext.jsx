@@ -65,9 +65,15 @@ export const SocketProvider = ({ children }) => {
         throw new Error('No authentication token available')
       }
       
+      // Create unique socket instance ID for multiple frontend instances
+      const instanceId = typeof __INSTANCE_ID__ !== 'undefined' ? __INSTANCE_ID__ : 'default'
+      const port = typeof __PORT__ !== 'undefined' ? __PORT__ : 'unknown'
+      
       const socketInstance = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
         auth: {
           token,
+          instanceId, // Send instance ID to backend
+          port,       // Send port info to backend
         },
         transports: ['websocket', 'polling'], // Fallback to polling if websocket fails
         autoConnect: true,
@@ -76,6 +82,12 @@ export const SocketProvider = ({ children }) => {
         reconnection: true,
         reconnectionAttempts: 3,
         reconnectionDelay: 1000,
+        // Add unique query parameters to distinguish instances
+        query: {
+          instanceId,
+          port,
+          timestamp: Date.now(),
+        }
       })
 
       // Connection event handlers

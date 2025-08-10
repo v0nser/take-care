@@ -14,6 +14,7 @@ import meetingRoutes from './routes/meetings.js';
 import notificationRoutes from './routes/notifications.js';
 import logRoutes from './routes/logs.js';
 import availabilityRoutes from './routes/availability.js';
+import searchRoutes from './routes/search.js';
 import seedRoutes from './routes/seed.js';
 import jwt from 'jsonwebtoken';
 import User from './models/User.js';
@@ -30,6 +31,7 @@ const server = createServer(app);
 // Define allowed origins
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
+  "http://localhost:5174",
   "https://take-care-dev.netlify.app",
   "https://take-care.netlify.app",
   "https://take-care.netlify.app"
@@ -76,6 +78,7 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/availability', availabilityRoutes);
+app.use('/api/search', searchRoutes);
 app.use('/api/seed', seedRoutes);
 
 // Health check route
@@ -91,6 +94,8 @@ app.get('/api/health', (req, res) => {
 io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
+    const instanceId = socket.handshake.auth.instanceId || 'default';
+    const port = socket.handshake.auth.port || 'unknown';
     
     if (!token) {
       return next(new Error('Authentication token missing'));
@@ -110,8 +115,12 @@ io.use(async (socket, next) => {
       return next(new Error('Account is deactivated'));
     }
 
-    // Attach user to socket
+    // Attach user and instance info to socket
     socket.user = user;
+    socket.instanceId = instanceId;
+    socket.port = port;
+    
+    console.log(`🔌 Socket auth: ${user.email} (${user.role}) - Instance: ${instanceId}, Port: ${port}`);
     next();
   } catch (error) {
     console.error('Socket authentication error:', error.message);
@@ -120,23 +129,28 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  console.log(`✅ User connected: ${socket.user.email} (${socket.id})`);
+  console.log(`✅ User connected: ${socket.user.email} (${socket.user.role}) - Instance: ${socket.instanceId}, Port: ${socket.port}, Socket: ${socket.id}`);
 
-  // Automatically join user to their room
-  socket.join(`user_${socket.user._id}`);
-  console.log(`User ${socket.user._id} joined their room`);
+  // Create instance-specific room names to avoid conflicts
+  const userRoom = `user_${socket.user._id}_${socket.instanceId}`;
+  const doctorRoom = `doctor_${socket.user._id}_${socket.instanceId}`;
+  
+  // Automatically join user to their instance-specific room
+  socket.join(userRoom);
+  console.log(`User ${socket.user._id} joined instance room: ${userRoom}`);
 
-  // Join role-specific room for doctors
+  // Join role-specific room for doctors (instance-specific)
   if (socket.user.role === 'doctor') {
-    socket.join(`doctor_${socket.user._id}`);
-    console.log(`Doctor ${socket.user._id} joined doctor room`);
+    socket.join(doctorRoom);
+    console.log(`Doctor ${socket.user._id} joined instance doctor room: ${doctorRoom}`);
   }
 
   socket.on('join_user_room', (userId) => {
     // Verify user can only join their own room
     if (userId === socket.user._id.toString()) {
-      socket.join(`user_${userId}`);
-      console.log(`User ${userId} joined their room`);
+      const userRoom = `user_${userId}_${socket.instanceId}`;
+      socket.join(userRoom);
+      console.log(`User ${userId} joined instance room: ${userRoom}`);
     } else {
       console.warn(`User ${socket.user._id} tried to join room for user ${userId}`);
     }
@@ -145,15 +159,16 @@ io.on('connection', (socket) => {
   socket.on('join_doctor_room', (doctorId) => {
     // Verify user is a doctor and can only join their own room
     if (socket.user.role === 'doctor' && doctorId === socket.user._id.toString()) {
-      socket.join(`doctor_${doctorId}`);
-      console.log(`Doctor ${doctorId} joined their room`);
+      const doctorRoom = `doctor_${doctorId}_${socket.instanceId}`;
+      socket.join(doctorRoom);
+      console.log(`Doctor ${doctorId} joined instance doctor room: ${doctorRoom}`);
     } else {
       console.warn(`User ${socket.user._id} (${socket.user.role}) tried to join doctor room ${doctorId}`);
     }
   });
 
   socket.on('disconnect', (reason) => {
-    console.log(`❌ User disconnected: ${socket.user.email} (${socket.id}) - ${reason}`);
+    console.log(`❌ User disconnected: ${socket.user.email} (${socket.user.role}) - Instance: ${socket.instanceId}, Port: ${socket.port}, Socket: ${socket.id} - ${reason}`);
   });
 
   // Handle authentication errors

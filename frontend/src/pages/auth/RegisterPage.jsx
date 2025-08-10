@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, UserCheck, AlertCircle, Stethoscope } from 'lucide-react';
 
 const RegisterPage = () => {
   const { register, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -117,8 +118,15 @@ const RegisterPage = () => {
     try {
       const { confirmPassword, ...registerData } = formData;
       await register(registerData);
-      // Redirect will be handled by App.jsx based on user role
-      navigate('/dashboard');
+      // Check for return URL from query params
+      const returnUrl = searchParams.get('returnUrl');
+      if (returnUrl) {
+        // Decode and navigate to the return URL
+        navigate(decodeURIComponent(returnUrl));
+      } else {
+        // Default redirect to dashboard
+        navigate('/dashboard');
+      }
     } catch (err) {
       console.error('Registration failed:', err);
       // Error is handled by context

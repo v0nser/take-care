@@ -20,7 +20,7 @@ import {
   ChevronDown,
   LogOut,
   Home,
-  Search,
+
   Bell,
   HelpCircle,
   BarChart3,
@@ -44,6 +44,7 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import ConnectionStatus from '../ui/ConnectionStatus'
+import SearchBar from '../ui/SearchBar'
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth()
@@ -56,10 +57,8 @@ const DashboardLayout = () => {
     const saved = localStorage.getItem('sidebarCollapsed')
     return saved ? JSON.parse(saved) : false
   })
-  const [searchQuery, setSearchQuery] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState({})
 
   const userRole = user?.role || 'patient'
@@ -129,7 +128,6 @@ const DashboardLayout = () => {
           { name: 'Patients', href: '/dashboard/patients', icon: Users, badge: '48', gradient: 'from-purple-500 to-violet-600' },
           { name: 'Medical Records', href: '/dashboard/records', icon: FileText, badge: null, gradient: 'from-cyan-500 to-blue-600' },
           { name: 'Payments', href: '/dashboard/payments', icon: CreditCard, badge: null, gradient: 'from-yellow-500 to-amber-600' },
-          { name: 'Schedule', href: '/dashboard/schedule', icon: Clock, badge: null, gradient: 'from-orange-500 to-red-600' },
           ...baseItems,
         ]
       case 'patient':
@@ -148,6 +146,7 @@ const DashboardLayout = () => {
             ]
           },
           { name: 'Find Doctors', href: '/dashboard/doctors', icon: Users, badge: null, gradient: 'from-green-500 to-emerald-600' },
+          { name: 'Services', href: '/dashboard/services', icon: Stethoscope, badge: null, gradient: 'from-indigo-500 to-purple-600' },
           { name: 'Medical Records', href: '/dashboard/records', icon: FileText, badge: null, gradient: 'from-purple-500 to-violet-600' },
           { name: 'Payments', href: '/dashboard/payments', icon: CreditCard, badge: null, gradient: 'from-yellow-500 to-orange-600' },
           { name: 'Profile', href: '/dashboard/profile', icon: User, badge: null, gradient: 'from-cyan-500 to-blue-600' },
@@ -319,18 +318,26 @@ const DashboardLayout = () => {
           const hasSubItems = item.subItems && item.subItems.length > 0
           
           const handleClick = (e) => {
+            console.log('🔥 Navigation clicked:', item.name, 'href:', item.href, 'collapsed:', sidebarCollapsed, 'hasSubItems:', hasSubItems);
+            
+            // Stop event propagation to prevent any interference
+            e.preventDefault();
+            e.stopPropagation();
+            
             if (sidebarCollapsed && isDesktop && hasSubItems) {
               // In collapsed mode, navigate to main route instead of expanding
-              navigate(item.href)
+              console.log('🔥 Navigating to (collapsed with subitems):', item.href);
+              navigate(item.href);
             } else if (hasSubItems) {
-              e.preventDefault()
+              console.log('🔥 Expanding menu for:', item.name);
               setExpandedMenus(prev => ({
                 ...prev,
                 [item.name]: !prev[item.name]
               }))
             } else {
               // For items without sub-items, navigate using React Router
-              navigate(item.href)
+              console.log('🔥 Navigating to (no subitems):', item.href);
+              navigate(item.href);
             }
           }
           
@@ -338,11 +345,11 @@ const DashboardLayout = () => {
           if (sidebarCollapsed && isDesktop) {
             return (
               <div key={item.name} className="relative group w-full flex justify-center mb-1">
-                <div
+                <button
                   onClick={handleClick}
                   className={clsx(
                     'relative flex items-center justify-center cursor-pointer rounded-2xl w-14 h-14 transition-all duration-500 transform hover:scale-110 hover:rotate-3',
-                    'shadow-lg hover:shadow-2xl',
+                    'shadow-lg hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 z-10',
                     'before:absolute before:inset-0 before:rounded-2xl before:transition-all before:duration-300',
                     isActive
                       ? `bg-gradient-to-br ${item.gradient} shadow-xl shadow-blue-500/25 text-white scale-105`
@@ -351,17 +358,19 @@ const DashboardLayout = () => {
                   style={{
                     animationDelay: `${index * 50}ms`
                   }}
+                  type="button"
+                  aria-label={item.name}
                 >
                   {/* Animated background ring */}
                   <div className={clsx(
-                    'absolute inset-0 rounded-2xl transition-all duration-300',
+                    'absolute inset-0 rounded-2xl transition-all duration-300 pointer-events-none',
                     isActive 
                       ? 'bg-gradient-to-br from-white/20 to-transparent animate-pulse' 
                       : 'group-hover:bg-gradient-to-br group-hover:from-blue-50/50 group-hover:to-purple-50/50 dark:group-hover:from-blue-900/20 dark:group-hover:to-purple-900/20'
                   )}></div>
                   
                   {/* Icon with enhanced effects */}
-                  <div className="relative z-10">
+                  <div className="relative z-10 pointer-events-none">
                     <Icon className={clsx(
                       'h-6 w-6 transition-all duration-300 transform group-hover:scale-110',
                       isActive 
@@ -371,13 +380,13 @@ const DashboardLayout = () => {
                     
                     {/* Active indicator pulse */}
                     {isActive && (
-                      <div className="absolute inset-0 rounded-full bg-white/30 animate-ping"></div>
+                      <div className="absolute inset-0 rounded-full bg-white/30 animate-ping pointer-events-none"></div>
                     )}
                   </div>
                   
                   {/* Enhanced badge with animation */}
                   {item.badge && (
-                    <div className="absolute -top-1 -right-1 z-20">
+                    <div className="absolute -top-1 -right-1 z-20 pointer-events-none">
                       <span className="relative flex h-5 w-5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-5 w-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold items-center justify-center shadow-lg">
@@ -389,13 +398,13 @@ const DashboardLayout = () => {
                   
                   {/* Hover glow effect */}
                   <div className={clsx(
-                    'absolute inset-0 rounded-2xl transition-all duration-300 opacity-0 group-hover:opacity-100',
+                    'absolute inset-0 rounded-2xl transition-all duration-300 opacity-0 group-hover:opacity-100 pointer-events-none',
                     'bg-gradient-to-r from-blue-400/10 to-purple-400/10 blur-sm'
                   )}></div>
-                </div>
+                </button>
                 
                 {/* Enhanced tooltip with better design */}
-                <div className="absolute left-16 top-1/2 transform -translate-y-1/2 z-50 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-1 pointer-events-none">
+                <div className="absolute left-16 top-1/2 transform -translate-y-1/2 z-[60] opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-1 pointer-events-none">
                   <div className="relative bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-700 dark:to-gray-600 text-white text-sm px-3 py-2 rounded-lg shadow-2xl whitespace-nowrap border border-gray-700/50">
                     <div className="flex items-center space-x-2">
                       <Icon className="h-3 w-3" />
@@ -419,8 +428,8 @@ const DashboardLayout = () => {
                 </div>
                 
                 {/* Click ripple effect */}
-                <div className="absolute inset-0 rounded-2xl overflow-hidden">
-                  <div className="absolute inset-0 bg-white/20 transform scale-0 group-active:scale-100 transition-transform duration-200 rounded-2xl"></div>
+                <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                  <div className="absolute inset-0 bg-white/20 transform scale-0 group-active:scale-100 transition-transform duration-200 rounded-2xl pointer-events-none"></div>
                 </div>
               </div>
             )
@@ -429,10 +438,10 @@ const DashboardLayout = () => {
           // Expanded mode - full navigation
           return (
             <div key={item.name}>
-              <div
+              <button
                 onClick={handleClick}
                 className={clsx(
-                  'group flex items-center justify-between px-4 py-4 rounded-2xl text-sm font-medium transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg cursor-pointer',
+                  'group flex items-center justify-between px-4 py-4 rounded-2xl text-sm font-medium transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg cursor-pointer w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500/50',
                   isActive
                     ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 shadow-lg border border-blue-200/50 dark:border-blue-700/50'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50 hover:text-gray-900 dark:hover:text-white'
@@ -440,6 +449,8 @@ const DashboardLayout = () => {
                 style={{
                   animationDelay: `${index * 100}ms`
                 }}
+                type="button"
+                aria-label={item.name}
               >
                 <div className="flex items-center space-x-3">
                   <div className={clsx(
@@ -471,7 +482,7 @@ const DashboardLayout = () => {
                     )} />
                   )}
                 </div>
-              </div>
+              </button>
               
               {/* Sub-items */}
               {hasSubItems && isExpanded && (
@@ -701,55 +712,17 @@ const DashboardLayout = () => {
             </div>
 
             {/* Center - Elegant Search */}
-            <div className="hidden sm:flex flex-1 max-w-lg mx-12">
-              <div className={clsx(
-                'relative w-full transition-all duration-500 group',
-                isSearchFocused ? 'scale-105' : ''
-              )}>
-                {/* Elegant glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/15 to-blue-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-500"></div>
-                
-                <div className="relative">
-                  {/* Search icon with animation */}
-                  <div className="absolute left-5 top-1/2 transform -translate-y-1/2">
-                    <Search className={clsx(
-                      "h-5 w-5 transition-all duration-300",
-                      isSearchFocused ? "text-blue-500 scale-110" : "text-gray-400"
-                    )} />
-                  </div>
-                  
-                  <input
-                    type="text"
-                    placeholder="Search patients, appointments, records..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setIsSearchFocused(true)}
-                    onBlur={() => setIsSearchFocused(false)}
-                    className="w-full pl-14 pr-12 py-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-600/50 rounded-3xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 text-sm placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-300 hover:bg-white dark:hover:bg-gray-700/80 shadow-lg hover:shadow-xl font-medium"
-                  />
-                  
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-300 hover:scale-110 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                  
-                  {/* Search suggestions indicator */}
-                  {isSearchFocused && (
-                    <div className="absolute top-full left-0 right-0 mt-2 p-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-600/50 text-xs text-gray-500 dark:text-gray-400 font-medium">
-                      Start typing to search across all records...
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="hidden sm:flex flex-1 max-w-2xl mx-12">
+              <SearchBar 
+                placeholder="Search patients, appointments, records, payments..."
+                showFilters={true}
+                compact={false}
+              />
             </div>
 
-                         {/* Right section - Elegant */}
-             <div className="flex items-center space-x-4">
-               {/* Theme toggle - Elegant */}
+            {/* Right section - Elegant */}
+            <div className="flex items-center space-x-4">
+              {/* Theme toggle - Elegant */}
               <button
                 onClick={toggleTheme}
                 className="p-4 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group border border-gray-200/50 dark:border-gray-600/50 backdrop-blur-xl"
