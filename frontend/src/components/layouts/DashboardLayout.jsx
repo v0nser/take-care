@@ -44,7 +44,8 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import ConnectionStatus from '../ui/ConnectionStatus'
-import SearchBar from '../ui/SearchBar'
+import ResponsiveSearchBar from '../ui/ResponsiveSearchBar'
+import CompactSearchBar from '../ui/CompactSearchBar'
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth()
@@ -278,7 +279,9 @@ const DashboardLayout = () => {
                   </div>
                   <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 group-hover:text-blue-800 dark:group-hover:text-blue-200 transition-colors duration-300">Active</span>
                 </div>
-                <p className="text-lg font-bold text-blue-800 dark:text-blue-200 mt-1 group-hover:scale-110 transition-transform duration-300 origin-left">24</p>
+                <p className="text-lg font-bold text-blue-800 dark:text-blue-200 mt-1 group-hover:scale-110 transition-transform duration-300 origin-left">
+                  {dashboardInfo?.activeAppointments || 0}
+                </p>
               </div>
               
               {/* Hover glow */}
@@ -296,7 +299,9 @@ const DashboardLayout = () => {
                   </div>
                   <span className="text-xs font-semibold text-green-700 dark:text-green-300 group-hover:text-green-800 dark:group-hover:text-green-200 transition-colors duration-300">Today</span>
                 </div>
-                <p className="text-lg font-bold text-green-800 dark:text-green-200 mt-1 group-hover:scale-110 transition-transform duration-300 origin-left">8</p>
+                <p className="text-lg font-bold text-green-800 dark:text-green-200 mt-1 group-hover:scale-110 transition-transform duration-300 origin-left">
+                  {dashboardInfo?.todayAppointments || 0}
+                </p>
               </div>
               
               {/* Hover glow */}
@@ -713,10 +718,18 @@ const DashboardLayout = () => {
 
             {/* Center - Elegant Search */}
             <div className="hidden sm:flex flex-1 max-w-2xl mx-12">
-              <SearchBar 
+              <CompactSearchBar 
                 placeholder="Search patients, appointments, records, payments..."
-                showFilters={true}
                 compact={false}
+              />
+            </div>
+
+            {/* Mobile Search Button - Visible on small screens */}
+            <div className="sm:hidden flex-1 px-4">
+              <CompactSearchBar 
+                placeholder="Search patients, appointments, records, payments..."
+                compact={true}
+                mobileVariant="overlay"
               />
             </div>
 

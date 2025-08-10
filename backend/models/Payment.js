@@ -9,7 +9,7 @@ const paymentSchema = new mongoose.Schema({
   appointment: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Appointment',
-    required: true
+    required: true // Restored to true since we're re-enabling appointments
   },
   doctor: {
     type: mongoose.Schema.Types.ObjectId,
@@ -53,6 +53,11 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     enum: ['card', 'netbanking', 'wallet', 'upi', 'emi'],
     default: null
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['razorpay', 'cash', 'insurance'],
+    default: 'razorpay'
   },
   
   // Failure Details

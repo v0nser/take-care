@@ -95,6 +95,12 @@ const activityLogSchema = new mongoose.Schema({
   isPrivate: {
     type: Boolean,
     default: false
+  },
+  
+  // Timestamp (for backward compatibility)
+  timestamp: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true,
@@ -148,5 +154,13 @@ activityLogSchema.statics.getSystemActivity = async function(filters = {}, limit
     .limit(limit)
     .populate('user', 'firstName lastName email role');
 };
+
+// Pre-save middleware to ensure timestamp is set
+activityLogSchema.pre('save', function(next) {
+  if (!this.timestamp) {
+    this.timestamp = new Date();
+  }
+  next();
+});
 
 export default mongoose.model('ActivityLog', activityLogSchema);

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
+  Home,
   Search, 
   Filter, 
   Grid, 
@@ -108,8 +109,14 @@ const ServicesPage = () => {
                 <ArrowRight className="w-4 h-4 rotate-180" />
                 Back
               </button>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Medical Services</h1>
-              <div className="w-16"></div>
+                              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Medical Services</h1>
+                <button
+                  onClick={() => navigate('/')}
+                  className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  <Home className="w-4 h-4" />
+                  Home
+                </button>
             </div>
           </div>
         </div>

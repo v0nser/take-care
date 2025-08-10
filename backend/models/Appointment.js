@@ -87,9 +87,7 @@ const appointmentSchema = new mongoose.Schema({
   },
   meetingId: {
     type: String,
-    default: null,
-    unique: true,
-    sparse: true
+    default: null
   },
   jitsiRoomName: {
     type: String,
@@ -198,7 +196,7 @@ appointmentSchema.index({ patient: 1, appointmentDate: 1 });
 appointmentSchema.index({ doctor: 1, appointmentDate: 1 });
 appointmentSchema.index({ status: 1 });
 appointmentSchema.index({ appointmentDate: 1, appointmentTime: 1 });
-appointmentSchema.index({ meetingId: 1 });
+// Removed duplicate meetingId index - it's already defined in the schema with unique: true, sparse: true
 appointmentSchema.index({ consultationType: 1 });
 
 // Helper function to generate unique meeting ID

@@ -1,18 +1,22 @@
 {
   "name": "takecare-backend",
   "version": "1.0.0",
-  "description": "TakeCare Healthcare Backend API",
+  "description": "TakeCare Healthcare Backend API with Socket.IO + JWT Authentication",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "seed": "node -e \"import('./utils/seedData.js').then(seedData => seedData.default()).catch(console.error)\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "healthcare",
     "mern",
-    "api"
+    "api",
+    "socket.io",
+    "jwt",
+    "real-time"
   ],
   "author": "TakeCare Team",
   "license": "MIT",
@@ -30,5 +34,9 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   }
 }

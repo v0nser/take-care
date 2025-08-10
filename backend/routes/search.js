@@ -160,14 +160,14 @@ router.get('/', authenticate, async (req, res) => {
 
       // Role-based restrictions
       if (userRole === 'patient') {
-        paymentSearchQuery.patient = userId;
+        paymentSearchQuery.user = userId;
       } else if (userRole === 'doctor') {
         paymentSearchQuery.doctor = userId;
       }
       // Admins can search all payments
 
       const payments = await Payment.find(paymentSearchQuery)
-        .populate('patient', 'firstName lastName email')
+        .populate('user', 'firstName lastName email')
         .populate('doctor', 'firstName lastName email')
         .limit(limit)
         .skip(skip)
@@ -177,7 +177,7 @@ router.get('/', authenticate, async (req, res) => {
         ...payment,
         type: 'payment',
         displayName: `Payment - ${payment.paymentMethod}`,
-        subtitle: `${payment.patient.firstName} ${payment.patient.lastName} - $${payment.amount}`,
+        subtitle: `${payment.user ? payment.user.firstName + ' ' + payment.user.lastName : 'Unknown User'} - ₹${payment.amount}`,
         href: `/dashboard/payments/${payment._id}`,
         date: payment.createdAt
       }));
@@ -300,7 +300,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
 
       suggestions.push(...users.map(user => ({
         type: 'user',
-        text: `${user.firstName} ${user.lastName}`,
+        displayName: `${user.firstName} ${user.lastName}`,
         subtitle: user.role === 'doctor' ? user.specialization : user.role,
         href: `/dashboard/users/${user._id}`
       })));
@@ -329,7 +329,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
 
       suggestions.push(...appointments.map(appointment => ({
         type: 'appointment',
-        text: `${appointment.type} - ${appointment.reason}`,
+        displayName: `${appointment.type} - ${appointment.reason}`,
         subtitle: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
         href: `/dashboard/appointments/${appointment._id}`
       })));

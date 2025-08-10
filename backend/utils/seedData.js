@@ -2,15 +2,27 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import DoctorAvailability from '../models/DoctorAvailability.js';
 import Appointment from '../models/Appointment.js';
+import MedicalRecord from '../models/MedicalRecord.js';
+import Payment from '../models/Payment.js';
+import ActivityLog from '../models/ActivityLog.js';
+import connectDB from '../config/database.js';
 
 const seedData = async () => {
   try {
     console.log('🌱 Starting database seeding...');
+    
+    // Connect to database first
+    console.log('🔌 Connecting to database...');
+    await connectDB();
+    console.log('✅ Database connected successfully');
 
     // Clear existing data
     await User.deleteMany({});
     await DoctorAvailability.deleteMany({});
     await Appointment.deleteMany({});
+    await MedicalRecord.deleteMany({});
+    await Payment.deleteMany({});
+    await ActivityLog.deleteMany({});
     console.log('🗑️ Cleared existing data');
 
     // Create sample doctors - covering ALL specialties
@@ -970,8 +982,7 @@ const seedData = async () => {
         reason: 'Chest pain and irregular heartbeat',
         symptoms: ['chest pain', 'palpitations', 'shortness of breath'],
         consultationFee: 800,
-        meetingId: `takecare-meeting-${Date.now()}-1`,
-        meetingLink: `https://meet.jit.si/takecare-meeting-${Date.now()}-1`,
+        meetingId: `seed-appointment-1-${Date.now()}`,
         notes: {
           patient: 'Experiencing symptoms for the past week',
           doctor: 'Confirmed appointment for cardiac evaluation'
@@ -989,6 +1000,7 @@ const seedData = async () => {
         reason: 'Skin rash and irritation',
         symptoms: ['rash', 'itching', 'redness'],
         consultationFee: 600,
+        meetingId: `seed-appointment-2-${Date.now()}`,
         notes: {
           patient: 'Rash appeared after using new skincare product'
         }
@@ -1006,6 +1018,7 @@ const seedData = async () => {
         symptoms: ['fever', 'irritability'],
         consultationFee: 500,
         diagnosis: 'Normal post-vaccination reaction',
+        meetingId: `seed-appointment-3-${Date.now()}`,
         prescription: [
           {
             medicine: 'Paracetamol',
@@ -1019,15 +1032,374 @@ const seedData = async () => {
           patient: 'Follow-up after MMR vaccination',
           doctor: 'Normal reaction, advised monitoring'
         }
+      },
+      // Additional appointments for better search data
+      {
+        patient: createdPatients[3]._id,
+        doctor: createdDoctors[3]._id,
+        appointmentDate: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+        appointmentTime: '15:00',
+        duration: 45,
+        type: 'consultation',
+        status: 'completed',
+        reason: 'Knee pain and mobility issues',
+        symptoms: ['knee pain', 'swelling', 'limited mobility'],
+        consultationFee: 900,
+        diagnosis: 'Mild osteoarthritis',
+        meetingId: `seed-appointment-4-${Date.now()}`,
+        prescription: [
+          {
+            medicine: 'Ibuprofen',
+            dosage: '400mg',
+            frequency: 'Three times daily',
+            duration: '7 days',
+            instructions: 'Take with food'
+          }
+        ],
+        notes: {
+          patient: 'Pain started after running marathon',
+          doctor: 'Recommended physical therapy and follow-up'
+        }
+      },
+      {
+        patient: createdPatients[4]._id,
+        doctor: createdDoctors[4]._id,
+        appointmentDate: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+        appointmentTime: '16:00',
+        duration: 60,
+        type: 'consultation',
+        status: 'completed',
+        reason: 'Anxiety and stress management',
+        symptoms: ['anxiety', 'insomnia', 'stress'],
+        consultationFee: 700,
+        diagnosis: 'Generalized anxiety disorder',
+        meetingId: `seed-appointment-5-${Date.now()}`,
+        prescription: [
+          {
+            medicine: 'Sertraline',
+            dosage: '50mg',
+            frequency: 'Once daily',
+            duration: '30 days',
+            instructions: 'Take in the morning'
+          }
+        ],
+        notes: {
+          patient: 'Feeling overwhelmed with work and personal life',
+          doctor: 'Recommended therapy sessions and medication'
+        }
       }
     ];
 
     // Create appointments
+    const createdAppointments = [];
     for (const appointmentData of sampleAppointments) {
       const appointment = new Appointment(appointmentData);
       await appointment.save();
+      createdAppointments.push(appointment);
     }
-    console.log(`📋 Created ${sampleAppointments.length} sample appointments`);
+    console.log(`📋 Created ${createdAppointments.length} sample appointments`);
+    
+    // Re-enabled appointments - testing with fixed model
+
+    // Create sample medical records
+    const sampleMedicalRecords = [
+      {
+        patient: createdPatients[0]._id,
+        doctor: createdDoctors[0]._id,
+        appointment: createdAppointments[0]._id,
+        recordType: 'consultation',
+        title: 'Cardiac Evaluation Report',
+        description: 'Comprehensive cardiac assessment including ECG and stress test',
+        date: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000),
+        symptoms: [
+          { symptom: 'chest pain', severity: 'moderate', duration: '1 week' },
+          { symptom: 'palpitations', severity: 'mild', duration: '3 days' }
+        ],
+        diagnosis: [
+          { condition: 'Atrial fibrillation', icd10Code: 'I48.91', severity: 'moderate', status: 'active' }
+        ],
+        prescription: [
+          {
+            medicine: 'Metoprolol',
+            dosage: '25mg',
+            frequency: 'Twice daily',
+            duration: '30 days',
+            instructions: 'Take before meals'
+          }
+        ],
+        vitalSigns: {
+          bloodPressure: { systolic: 140, diastolic: 90 },
+          heartRate: 85,
+          temperature: 37.2,
+          weight: 75,
+          height: 175
+        }
+      },
+      {
+        patient: createdPatients[1]._id,
+        doctor: createdDoctors[1]._id,
+        appointment: createdAppointments[1]._id,
+        recordType: 'diagnosis',
+        title: 'Dermatological Assessment',
+        description: 'Evaluation of skin rash and allergic reaction',
+        date: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000),
+        symptoms: [
+          { symptom: 'skin rash', severity: 'moderate', duration: '2 days' },
+          { symptom: 'itching', severity: 'severe', duration: '2 days' }
+        ],
+        diagnosis: [
+          { condition: 'Contact dermatitis', icd10Code: 'L25.9', severity: 'moderate', status: 'active' }
+        ],
+        prescription: [
+          {
+            medicine: 'Hydrocortisone cream',
+            dosage: '1%',
+            frequency: 'Apply twice daily',
+            duration: '7 days',
+            instructions: 'Apply to affected areas only'
+          }
+        ]
+      },
+      {
+        patient: createdPatients[2]._id,
+        doctor: createdDoctors[2]._id,
+        appointment: createdAppointments[2]._id,
+        recordType: 'vaccination',
+        title: 'MMR Vaccination Record',
+        description: 'Measles, Mumps, and Rubella vaccination administration',
+        date: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000),
+        symptoms: [
+          { symptom: 'fever', severity: 'mild', duration: '1 day' }
+        ],
+        diagnosis: [
+          { condition: 'Post-vaccination reaction', icd10Code: 'T88.1', severity: 'mild', status: 'resolved' }
+        ]
+      },
+      {
+        patient: createdPatients[3]._id,
+        doctor: createdDoctors[3]._id,
+        appointment: createdAppointments[3]._id,
+        recordType: 'diagnosis',
+        title: 'Orthopedic Consultation Report',
+        description: 'Knee joint assessment and mobility evaluation',
+        date: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000),
+        symptoms: [
+          { symptom: 'knee pain', severity: 'moderate', duration: '2 weeks' },
+          { symptom: 'swelling', severity: 'mild', duration: '1 week' }
+        ],
+        diagnosis: [
+          { condition: 'Osteoarthritis of knee', icd10Code: 'M17.9', severity: 'mild', status: 'chronic' }
+        ],
+        prescription: [
+          {
+            medicine: 'Ibuprofen',
+            dosage: '400mg',
+            frequency: 'Three times daily',
+            duration: '7 days',
+            instructions: 'Take with food'
+          }
+        ]
+      },
+      {
+        patient: createdPatients[4]._id,
+        doctor: createdDoctors[4]._id,
+        appointment: createdAppointments[4]._id,
+        recordType: 'consultation',
+        title: 'Psychiatric Evaluation',
+        description: 'Mental health assessment and anxiety disorder evaluation',
+        date: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000),
+        symptoms: [
+          { symptom: 'anxiety', severity: 'moderate', duration: '3 months' },
+          { symptom: 'insomnia', severity: 'moderate', duration: '2 months' }
+        ],
+        diagnosis: [
+          { condition: 'Generalized anxiety disorder', icd10Code: 'F41.1', severity: 'moderate', status: 'active' }
+        ],
+        prescription: [
+          {
+            medicine: 'Sertraline',
+            dosage: '50mg',
+            frequency: 'Once daily',
+            duration: '30 days',
+            instructions: 'Take in the morning'
+          }
+        ]
+      }
+    ];
+
+    // Create medical records
+    const createdMedicalRecords = [];
+    for (const recordData of sampleMedicalRecords) {
+      const record = new MedicalRecord(recordData);
+      await record.save();
+      createdMedicalRecords.push(record);
+    }
+    console.log(`📋 Created ${createdMedicalRecords.length} sample medical records`);
+
+    // Create sample payments
+    const samplePayments = [
+      {
+        user: createdPatients[0]._id,
+        appointment: createdAppointments[0]._id,
+        doctor: createdDoctors[0]._id,
+        amount: 800,
+        currency: 'INR',
+        razorpayOrderId: `order_${Date.now()}_1`,
+        razorpayPaymentId: `pay_${Date.now()}_1`,
+        status: 'paid',
+        method: 'card',
+        paymentMethod: 'razorpay'
+      },
+      {
+        user: createdPatients[1]._id,
+        appointment: createdAppointments[1]._id,
+        doctor: createdDoctors[1]._id,
+        amount: 600,
+        currency: 'INR',
+        razorpayOrderId: `order_${Date.now()}_2`,
+        status: 'created',
+        method: 'upi',
+        paymentMethod: 'razorpay'
+      },
+      {
+        user: createdPatients[2]._id,
+        appointment: createdAppointments[2]._id,
+        doctor: createdDoctors[2]._id,
+        amount: 500,
+        currency: 'INR',
+        razorpayOrderId: `order_${Date.now()}_3`,
+        razorpayPaymentId: `pay_${Date.now()}_3`,
+        status: 'paid',
+        method: 'netbanking',
+        paymentMethod: 'razorpay'
+      },
+      {
+        user: createdPatients[3]._id,
+        appointment: createdAppointments[3]._id,
+        doctor: createdDoctors[3]._id,
+        amount: 900,
+        currency: 'INR',
+        razorpayOrderId: `order_${Date.now()}_4`,
+        razorpayPaymentId: `pay_${Date.now()}_4`,
+        status: 'paid',
+        method: 'card',
+        paymentMethod: 'razorpay'
+      },
+      {
+        user: createdPatients[4]._id,
+        appointment: createdAppointments[4]._id,
+        doctor: createdDoctors[4]._id,
+        amount: 700,
+        currency: 'INR',
+        razorpayOrderId: `order_${Date.now()}_5`,
+        razorpayPaymentId: `pay_${Date.now()}_5`,
+        status: 'paid',
+        method: 'wallet',
+        paymentMethod: 'razorpay'
+      }
+    ];
+
+    // Create payments
+    const createdPayments = [];
+    for (const paymentData of samplePayments) {
+      const payment = new Payment(paymentData);
+      await payment.save();
+      createdPayments.push(payment);
+    }
+    console.log(`💰 Created ${createdPayments.length} sample payments`);
+
+    // Create sample activity logs
+    const sampleActivityLogs = [
+      {
+        user: createdPatients[0]._id,
+        action: 'appointment_book',
+        resourceType: 'appointment',
+        resourceId: createdAppointments[0]._id.toString(),
+        description: 'Booked appointment with Dr. Sarah Wilson for cardiac evaluation',
+        status: 'success',
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      {
+        user: createdPatients[1]._id,
+        action: 'appointment_book',
+        resourceType: 'appointment',
+        resourceId: createdAppointments[1]._id.toString(),
+        description: 'Booked appointment with Dr. Michael Chen for skin consultation',
+        status: 'success',
+        ipAddress: '192.168.1.101',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      },
+      {
+        user: createdDoctors[0]._id,
+        action: 'appointment_complete',
+        resourceType: 'appointment',
+        resourceId: createdAppointments[0]._id.toString(),
+        description: 'Confirmed appointment with John Doe for cardiac evaluation',
+        status: 'success',
+        ipAddress: '192.168.1.200',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      {
+        user: createdDoctors[1]._id,
+        action: 'medical_record_create',
+        resourceType: 'medical_record',
+        resourceId: createdMedicalRecords[1]._id.toString(),
+        description: 'Created medical record for Alice Smith dermatological assessment',
+        status: 'success',
+        ipAddress: '192.168.1.201',
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      },
+      {
+        user: createdPatients[2]._id,
+        action: 'payment_success',
+        resourceType: 'payment',
+        resourceId: createdPayments[2]._id.toString(),
+        description: 'Successfully paid consultation fee for pediatric consultation',
+        status: 'success',
+        ipAddress: '192.168.1.102',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      {
+        user: admin._id,
+        action: 'login',
+        resourceType: 'system',
+        resourceId: 'system',
+        description: 'Admin user logged into the system',
+        status: 'success',
+        ipAddress: '192.168.1.1',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      {
+        user: createdDoctors[0]._id,
+        action: 'login',
+        resourceType: 'system',
+        resourceId: 'system',
+        description: 'Dr. Sarah Wilson logged into the system',
+        status: 'success',
+        ipAddress: '192.168.1.200',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      {
+        user: createdPatients[0]._id,
+        action: 'profile_update',
+        resourceType: 'user',
+        resourceId: createdPatients[0]._id.toString(),
+        description: 'Updated personal information and contact details',
+        status: 'success',
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    ];
+
+    // Create activity logs
+    const createdActivityLogs = [];
+    for (const logData of sampleActivityLogs) {
+      const log = new ActivityLog(logData);
+      await log.save();
+      createdActivityLogs.push(log);
+    }
+    console.log(`📝 Created ${createdActivityLogs.length} sample activity logs`);
 
     console.log('\n🎉 Database seeding completed successfully!');
     console.log('\n📧 Login Credentials:');
@@ -1048,10 +1420,33 @@ const seedData = async () => {
       console.log(`     Password: password123`);
     });
     console.log('='.repeat(50));
+    console.log('\n📊 Sample Data Created:');
+    console.log(`  • ${createdAppointments.length} Appointments`);
+    console.log(`  • ${createdMedicalRecords.length} Medical Records`);
+    console.log(`  • ${createdPayments.length} Payments`);
+    console.log(`  • ${createdActivityLogs.length} Activity Logs`);
+    console.log('='.repeat(50));
+
+    // Close database connection
+    console.log('\n🔌 Closing database connection...');
+    await mongoose.connection.close();
+    console.log('✅ Database connection closed');
+    console.log('🎯 Seeding completed successfully!');
 
   } catch (error) {
     console.error('❌ Error seeding database:', error);
-    throw error;
+    
+    // Try to close connection on error
+    try {
+      if (mongoose.connection.readyState === 1) {
+        await mongoose.connection.close();
+        console.log('🔌 Database connection closed due to error');
+      }
+    } catch (closeError) {
+      console.error('❌ Error closing database connection:', closeError.message);
+    }
+    
+    process.exit(1);
   }
 };
 

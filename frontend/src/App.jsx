@@ -36,6 +36,9 @@ import AppointmentsPage from './pages/AppointmentsPage';
 // Development Tools
 import DatabaseSeederPage from './pages/DatabaseSeederPage';
 import ConnectionTestPage from './pages/ConnectionTestPage';
+import SearchDemoPage from './pages/SearchDemoPage';
+import FilterDemoPage from './pages/FilterDemoPage';
+import CompactSearchDemoPage from './pages/CompactSearchDemoPage';
 
 // Placeholder Pages
 import { 
@@ -128,6 +131,9 @@ const AppContent = () => {
             {/* Development tools */}
             <Route path="/dev/seed" element={<DatabaseSeederPage />} />
             <Route path="/dev/connection" element={<ConnectionTestPage />} />
+            <Route path="/dev/search-demo" element={<SearchDemoPage />} />
+            <Route path="/dev/filter-demo" element={<FilterDemoPage />} />
+            <Route path="/dev/compact-search-demo" element={<CompactSearchDemoPage />} />
             
             <Route path="/*" element={
               !userRole ? 

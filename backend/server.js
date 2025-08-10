@@ -4,6 +4,9 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import connectDB from './config/database.js';
+import jwt from 'jsonwebtoken';
+import User from './models/User.js';
+
 // Route imports
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -16,8 +19,6 @@ import logRoutes from './routes/logs.js';
 import availabilityRoutes from './routes/availability.js';
 import searchRoutes from './routes/search.js';
 import seedRoutes from './routes/seed.js';
-import jwt from 'jsonwebtoken';
-import User from './models/User.js';
 
 // Load environment variables
 dotenv.config();
@@ -28,23 +29,34 @@ process.setMaxListeners(20);
 const app = express();
 const server = createServer(app);
 
-// Define allowed origins
+// Define allowed origins for development and production
 const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:5173",
-  "http://localhost:5174",
+  // Development origins
+  'http://localhost:5173',  // Doctor portal
+  'http://localhost:5174',  // Patient portal
+  'http://localhost:5175',  // Admin portal
+  
+  // Production origins
+  'https://doctor.app.com',
+  'https://patient.app.com', 
+  'https://admin.app.com',
+  
+  // Fallback origins (can be removed in production)
+  process.env.FRONTEND_URL,
   "https://take-care-dev.netlify.app",
-  "https://take-care.netlify.app",
   "https://take-care.netlify.app"
-];
+].filter(Boolean); // Remove undefined values
 
-// Socket.IO setup for real-time notifications
+// Socket.IO setup with CORS configuration
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
-  }
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
 });
 
 // Connect to MongoDB
@@ -60,7 +72,6 @@ app.use(cors({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
 
 // Make io available to routes
 app.use((req, res, next) => {
@@ -90,12 +101,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Socket.IO connection handling with authentication
+// Socket.IO authentication middleware
 io.use(async (socket, next) => {
   try {
-    const token = socket.handshake.auth.token;
-    const instanceId = socket.handshake.auth.instanceId || 'default';
-    const port = socket.handshake.auth.port || 'unknown';
+    const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
     
     if (!token) {
       return next(new Error('Authentication token missing'));
@@ -115,12 +124,10 @@ io.use(async (socket, next) => {
       return next(new Error('Account is deactivated'));
     }
 
-    // Attach user and instance info to socket
+    // Attach user info to socket
     socket.user = user;
-    socket.instanceId = instanceId;
-    socket.port = port;
     
-    console.log(`🔌 Socket auth: ${user.email} (${user.role}) - Instance: ${instanceId}, Port: ${port}`);
+    console.log(`🔌 Socket auth: ${user.email} (${user.role}) - Socket: ${socket.id}`);
     next();
   } catch (error) {
     console.error('Socket authentication error:', error.message);
@@ -128,47 +135,124 @@ io.use(async (socket, next) => {
   }
 });
 
+// Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log(`✅ User connected: ${socket.user.email} (${socket.user.role}) - Instance: ${socket.instanceId}, Port: ${socket.port}, Socket: ${socket.id}`);
+  const { user } = socket;
+  console.log(`✅ User connected: ${user.email} (${user.role}) - Socket: ${socket.id}`);
 
-  // Create instance-specific room names to avoid conflicts
-  const userRoom = `user_${socket.user._id}_${socket.instanceId}`;
-  const doctorRoom = `doctor_${socket.user._id}_${socket.instanceId}`;
-  
-  // Automatically join user to their instance-specific room
+  // Join role-based room
+  const roleRoom = `role_${user.role}`;
+  socket.join(roleRoom);
+  console.log(`👥 User ${user.email} joined role room: ${roleRoom}`);
+
+  // Join user-specific room for private messages
+  const userRoom = `user_${user._id}`;
   socket.join(userRoom);
-  console.log(`User ${socket.user._id} joined instance room: ${userRoom}`);
+  console.log(`👤 User ${user.email} joined user room: ${userRoom}`);
 
-  // Join role-specific room for doctors (instance-specific)
-  if (socket.user.role === 'doctor') {
-    socket.join(doctorRoom);
-    console.log(`Doctor ${socket.user._id} joined instance doctor room: ${doctorRoom}`);
+  // Emit user online event to all users in the same role room
+  socket.to(roleRoom).emit('user_online', {
+    userId: user._id,
+    email: user.email,
+    role: user.role,
+    timestamp: new Date().toISOString()
+  });
+
+  // Emit user online event to all connected clients (for admin monitoring)
+  io.emit('user_status_change', {
+    userId: user._id,
+    email: user.email,
+    role: user.role,
+    status: 'online',
+    timestamp: new Date().toISOString()
+  });
+
+  // Handle joining specific rooms
+  socket.on('join_room', (roomName) => {
+    // Validate room name format to prevent security issues
+    if (typeof roomName === 'string' && roomName.startsWith('appointment_')) {
+      socket.join(roomName);
+      console.log(`📅 User ${user.email} joined appointment room: ${roomName}`);
+    }
+  });
+
+  socket.on('leave_room', (roomName) => {
+    socket.leave(roomName);
+    console.log(`📤 User ${user.email} left room: ${roomName}`);
+  });
+
+  // Handle private messages
+  socket.on('private_message', (data) => {
+    const { recipientId, message } = data;
+    
+    if (recipientId && message) {
+      const recipientRoom = `user_${recipientId}`;
+      socket.to(recipientRoom).emit('private_message', {
+        senderId: user._id,
+        senderEmail: user.email,
+        message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Handle role-specific events
+  if (user.role === 'doctor') {
+    socket.on('doctor_availability_update', (data) => {
+      // Emit to all patients
+      socket.to('role_patient').emit('doctor_availability_updated', {
+        doctorId: user._id,
+        doctorName: user.name || user.email,
+        ...data,
+        timestamp: new Date().toISOString()
+      });
+    });
   }
 
-  socket.on('join_user_room', (userId) => {
-    // Verify user can only join their own room
-    if (userId === socket.user._id.toString()) {
-      const userRoom = `user_${userId}_${socket.instanceId}`;
-      socket.join(userRoom);
-      console.log(`User ${userId} joined instance room: ${userRoom}`);
-    } else {
-      console.warn(`User ${socket.user._id} tried to join room for user ${userId}`);
-    }
-  });
+  if (user.role === 'patient') {
+    socket.on('appointment_request', (data) => {
+      // Emit to all doctors
+      socket.to('role_doctor').emit('new_appointment_request', {
+        patientId: user._id,
+        patientName: user.name || user.email,
+        ...data,
+        timestamp: new Date().toISOString()
+      });
+    });
+  }
 
-  socket.on('join_doctor_room', (doctorId) => {
-    // Verify user is a doctor and can only join their own room
-    if (socket.user.role === 'doctor' && doctorId === socket.user._id.toString()) {
-      const doctorRoom = `doctor_${doctorId}_${socket.instanceId}`;
-      socket.join(doctorRoom);
-      console.log(`Doctor ${doctorId} joined instance doctor room: ${doctorRoom}`);
-    } else {
-      console.warn(`User ${socket.user._id} (${socket.user.role}) tried to join doctor room ${doctorId}`);
-    }
-  });
+  if (user.role === 'admin') {
+    socket.on('admin_broadcast', (data) => {
+      // Admin can broadcast to all users
+      io.emit('admin_broadcast', {
+        adminId: user._id,
+        adminName: user.name || user.email,
+        ...data,
+        timestamp: new Date().toISOString()
+      });
+    });
+  }
 
+  // Handle disconnection
   socket.on('disconnect', (reason) => {
-    console.log(`❌ User disconnected: ${socket.user.email} (${socket.user.role}) - Instance: ${socket.instanceId}, Port: ${socket.port}, Socket: ${socket.id} - ${reason}`);
+    console.log(`❌ User disconnected: ${user.email} (${user.role}) - Socket: ${socket.id} - ${reason}`);
+
+    // Emit user offline event to role room
+    socket.to(roleRoom).emit('user_offline', {
+      userId: user._id,
+      email: user.email,
+      role: user.role,
+      timestamp: new Date().toISOString()
+    });
+
+    // Emit user offline event to all connected clients
+    io.emit('user_status_change', {
+      userId: user._id,
+      email: user.email,
+      role: user.role,
+      status: 'offline',
+      timestamp: new Date().toISOString()
+    });
   });
 
   // Handle authentication errors
@@ -202,7 +286,7 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
   console.log(`🚀 TakeCare Backend Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Allowed Origins: ${allowedOrigins.join(', ')}`);
   console.log(`💳 Payment Service: ${process.env.RAZORPAY_KEY_ID ? '✅ Enabled' : '⚠️ Disabled (add RAZORPAY_KEY_ID to enable)'}`);
 });
