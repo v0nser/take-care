@@ -3,10 +3,14 @@ import { useApi } from '../../contexts/ApiContext'
 import { Calendar, Users, FileText, CreditCard, Clock, Stethoscope, RefreshCw, Settings, Video, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState, useEffect, useCallback } from 'react'
+import { useSocket } from '../../contexts/SocketContext'
+import OverviewStats from '../../components/dashboards/OverviewStats'
+import Chatbot from '../../components/dashboards/Chatbot'
 
 const DoctorDashboard = () => {
   const { user } = useAuth()
   const { apiCall } = useApi()
+  const { socket } = useSocket()
   
   const [stats, setStats] = useState([])
   const [todaysAppointments, setTodaysAppointments] = useState([])
@@ -48,30 +52,22 @@ const DoctorDashboard = () => {
         {
           name: "Today's Appointments",
           value: todayAppointments.toString(),
-          icon: Calendar,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50',
+          trend: todayAppointments > 0 ? 'Scheduled' : 'No appointments today'
         },
         {
           name: 'Total Patients',
           value: totalPatients.toString(),
-          icon: Users,
-          color: 'text-green-600',
-          bgColor: 'bg-green-50',
+          trend: totalPatients > 0 ? 'Active patients' : 'Building patient base'
         },
         {
           name: 'Monthly Revenue',
           value: `₹${monthlyRevenue.toLocaleString()}`,
-          icon: CreditCard,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-50',
+          trend: monthlyRevenue > 0 ? 'Earnings this month' : 'No revenue yet'
         },
         {
           name: 'Pending Reviews',
           value: pendingReviews.toString(),
-          icon: Clock,
-          color: 'text-orange-600',
-          bgColor: 'bg-orange-50',
+          trend: pendingReviews > 0 ? 'Requires attention' : 'All caught up'
         },
       ]
 
@@ -88,6 +84,23 @@ const DoctorDashboard = () => {
   useEffect(() => {
     fetchDashboardData()
   }, [fetchDashboardData])
+
+  useEffect(() => {
+    if (!socket) return
+    const refetch = () => fetchDashboardData()
+    socket.on('new_appointment', refetch)
+    socket.on('appointment_update', refetch)
+    socket.on('appointment_cancelled', refetch)
+    socket.on('appointment_completed', refetch)
+    socket.on('payment_success', refetch)
+    return () => {
+      socket.off('new_appointment', refetch)
+      socket.off('appointment_update', refetch)
+      socket.off('appointment_cancelled', refetch)
+      socket.off('appointment_completed', refetch)
+      socket.off('payment_success', refetch)
+    }
+  }, [socket, fetchDashboardData])
 
   const handleRefresh = () => {
     fetchDashboardData()
@@ -190,31 +203,14 @@ const DoctorDashboard = () => {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <div key={stat.name} className="card">
-              <div className="card-content">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {stat.name}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stat.value}
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      {/* Overview Stats */}
+      <OverviewStats 
+        stats={stats} 
+        role="doctor" 
+        isLoading={isLoading}
+        autoRefresh={true}
+        refreshInterval={30000}
+      />
 
       {/* Today's Appointments */}
       <div className="card">
@@ -363,6 +359,9 @@ const DoctorDashboard = () => {
           </div>
         </div>
       </div>
+      
+      {/* AI Chatbot */}
+      <Chatbot role="doctor" />
     </div>
   )
 }

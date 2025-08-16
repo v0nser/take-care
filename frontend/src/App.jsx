@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SocketProvider } from './contexts/SocketContext';
 import { ApiProvider, useApi } from './contexts/ApiContext';
+import { QuickBookingProvider } from './contexts/QuickBookingContext';
 
 // Layouts
 import PublicLayout from './components/layouts/PublicLayout';
@@ -35,25 +36,32 @@ import AppointmentsPage from './pages/AppointmentsPage';
 
 // Development Tools
 import DatabaseSeederPage from './pages/DatabaseSeederPage';
+import RazorpayTestPage from './pages/RazorpayTestPage';
 import ConnectionTestPage from './pages/ConnectionTestPage';
 import SearchDemoPage from './pages/SearchDemoPage';
 import FilterDemoPage from './pages/FilterDemoPage';
 import CompactSearchDemoPage from './pages/CompactSearchDemoPage';
 
+// Payment Pages
+import PaymentsPage from './pages/PaymentsPage';
+
 // Placeholder Pages
 import { 
   PlaceholderAppointments, 
-  PlaceholderRecords, 
-  PlaceholderPayments, 
   PlaceholderProfile,
   DoctorsPage,
   PatientsPage,
   SchedulePage
 } from './pages/PlaceholderPages';
+import MedicalRecordsPage from './pages/MedicalRecordsPage.jsx';
 
 // Services Pages
 import ServicesPage from './pages/ServicesPage';
 import ServiceDetailPage from './pages/ServiceDetailPage';
+
+// Diagnostic Pages
+import DiagnosticServicesPage from './pages/DiagnosticServicesPage';
+import DiagnosticBookingPage from './pages/DiagnosticBookingPage';
 
 // Teleconsultation
 import TeleconsultationInterface from './components/appointments/TeleconsultationInterface';
@@ -112,8 +120,8 @@ const AppContent = () => {
               <Route path="doctors" element={<DoctorsPage />} />
               <Route path="patients" element={<PatientsPage />} />
               <Route path="schedule" element={<SchedulePage />} />
-              <Route path="records" element={<PlaceholderRecords />} />
-              <Route path="payments" element={<PlaceholderPayments />} />
+              <Route path="records" element={<MedicalRecordsPage />} />
+              <Route path="payments" element={<PaymentsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="profile" element={<PlaceholderProfile />} />
               <Route path="availability" element={<DoctorAvailabilityPage />} />
@@ -121,6 +129,10 @@ const AppContent = () => {
               {/* Services within dashboard - with navigation */}
               <Route path="services" element={<ServicesPage />} />
               <Route path="services/:specialtyId" element={<ServiceDetailPage />} />
+
+              {/* Diagnostics within dashboard */}
+              <Route path="diagnostics" element={<DiagnosticServicesPage />} />
+              <Route path="diagnostics/booking" element={<DiagnosticBookingPage />} />
             </Route>
             
             {/* Teleconsultation Route - Outside dashboard layout for full-screen */}
@@ -130,6 +142,7 @@ const AppContent = () => {
             
             {/* Development tools */}
             <Route path="/dev/seed" element={<DatabaseSeederPage />} />
+            <Route path="/dev/razorpay" element={<RazorpayTestPage />} />
             <Route path="/dev/connection" element={<ConnectionTestPage />} />
             <Route path="/dev/search-demo" element={<SearchDemoPage />} />
             <Route path="/dev/filter-demo" element={<FilterDemoPage />} />
@@ -155,6 +168,11 @@ const AppContent = () => {
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/services/:specialtyId" element={<ServiceDetailPage />} />
             
+            {/* Diagnostic routes - accessible to unauthenticated users */}
+            <Route path="/diagnostics" element={<DiagnosticServicesPage />} />
+            {/* Booking requires authentication - redirect to login */}
+            <Route path="/diagnostics/booking" element={<Navigate to="/login" replace />} />
+            
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         )}
@@ -170,7 +188,9 @@ function App() {
         <AuthProvider>
           <ApiProvider>
             <SocketProvider>
-              <AppContent />
+              <QuickBookingProvider>
+                <AppContent />
+              </QuickBookingProvider>
             </SocketProvider>
           </ApiProvider>
         </AuthProvider>

@@ -1,16 +1,22 @@
 import { useAuth } from '../../contexts/AuthContext'
 import { useApi } from '../../contexts/ApiContext'
-import { Calendar, Users, FileText, CreditCard, Clock, Heart, RefreshCw, Loader2 } from 'lucide-react'
+import { Calendar, Users, FileText, CreditCard, Clock, Heart, RefreshCw, Loader2, TestTube, Activity } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import ServicesSection from '../../components/services/ServicesSection'
+import OverviewStats from '../../components/dashboards/OverviewStats'
+import RecentActivity from '../../components/dashboards/RecentActivity'
+import Chatbot from '../../components/dashboards/Chatbot'
 import { useState, useEffect, useCallback } from 'react'
+import { useSocket } from '../../contexts/SocketContext'
 
 const PatientDashboard = () => {
   const { user } = useAuth()
   const { apiCall } = useApi()
+  const { socket } = useSocket()
   
   const [stats, setStats] = useState([])
   const [recentAppointments, setRecentAppointments] = useState([])
+  const [diagnosticBookings, setDiagnosticBookings] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -26,64 +32,62 @@ const PatientDashboard = () => {
         limit: 5
       })
 
+      // Fetch all appointments for stats
+      const allAppointmentsResponse = await apiCall('/appointments', 'GET', {
+        limit: 100
+      })
+
+      // Fetch diagnostic bookings
+      const diagnosticsResponse = await apiCall('/diagnostics/my-bookings', 'GET', {
+        limit: 5
+      })
+
       // Fetch medical records count
       const medicalRecordsResponse = await apiCall('/medical-records', 'GET', {
         limit: 1
       })
 
-      // Fetch payments
-      const paymentsResponse = await apiCall('/payments', 'GET', {
-        limit: 1
-      })
+      // Calculate stats from real data
+      const upcomingAppointments = appointmentsResponse.success ? appointmentsResponse.appointments?.length || 0 : 0
+      const completedAppointments = allAppointmentsResponse.success ? 
+        allAppointmentsResponse.appointments?.filter(apt => apt.status === 'completed').length || 0 : 0
+      const diagnosticBookingsData = diagnosticsResponse.success && Array.isArray(diagnosticsResponse.data) 
+        ? diagnosticsResponse.data : []
+      const diagnosticBookingCount = diagnosticBookingsData.length
+      const pendingResults = diagnosticBookingsData.filter(booking => 
+        booking.status === 'sample-collected' || booking.status === 'pending'
+      ).length
 
       if (appointmentsResponse.success) {
         setRecentAppointments(appointmentsResponse.appointments || [])
       }
 
-      // Calculate stats from real data
-      const upcomingAppointments = appointmentsResponse.success ? appointmentsResponse.appointments?.length || 0 : 0
-      const medicalRecordsCount = medicalRecordsResponse.success ? medicalRecordsResponse.pagination?.total || 0 : 0
-      const totalPayments = paymentsResponse.success ? paymentsResponse.payments?.length || 0 : 0
-      
-      // Count unique doctors from appointments
-      const doctorIds = new Set()
-      if (appointmentsResponse.success && appointmentsResponse.appointments) {
-        appointmentsResponse.appointments.forEach(apt => {
-          if (apt.doctor?._id) {
-            doctorIds.add(apt.doctor._id.toString())
-          }
-        })
+      if (diagnosticsResponse.success) {
+        setDiagnosticBookings(diagnosticBookingsData)
       }
+      const medicalRecordsCount = medicalRecordsResponse.success ? medicalRecordsResponse.pagination?.total || 0 : 0
 
       const newStats = [
         {
           name: 'Upcoming Appointments',
-          value: upcomingAppointments.toString(),
-          icon: Calendar,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50',
+          value: upcomingAppointments,
+          trend: upcomingAppointments > 0 ? 'Scheduled' : 'None scheduled'
+        },
+        {
+          name: 'Diagnostic Bookings',
+          value: diagnosticBookingCount,
+          trend: pendingResults > 0 ? `${pendingResults} pending results` : 'All completed'
+        },
+        {
+          name: 'Completed Appointments',
+          value: completedAppointments,
+          trend: completedAppointments > 0 ? 'Treatment history' : 'No history yet'
         },
         {
           name: 'Medical Records',
-          value: medicalRecordsCount.toString(),
-          icon: FileText,
-          color: 'text-green-600',
-          bgColor: 'bg-green-50',
-        },
-        {
-          name: 'Total Payments',
-          value: totalPayments.toString(),
-          icon: CreditCard,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-50',
-        },
-        {
-          name: 'Doctors Consulted',
-          value: doctorIds.size.toString(),
-          icon: Users,
-          color: 'text-orange-600',
-          bgColor: 'bg-orange-50',
-        },
+          value: medicalRecordsCount,
+          trend: medicalRecordsCount > 0 ? 'Health data available' : 'No records yet'
+        }
       ]
 
       setStats(newStats)
@@ -95,43 +99,37 @@ const PatientDashboard = () => {
     }
   }, [apiCall])
 
-  // Fetch data on component mount
+  // Fetch data on component mount and on realtime events
   useEffect(() => {
     fetchDashboardData()
   }, [fetchDashboardData])
+
+  useEffect(() => {
+    if (!socket) return
+    const refetch = () => fetchDashboardData()
+    socket.on('new_appointment', refetch)
+    socket.on('appointment_update', refetch)
+    socket.on('appointment_cancelled', refetch)
+    socket.on('appointment_completed', refetch)
+    socket.on('new_medical_record', refetch)
+    socket.on('medical_record_updated', refetch)
+    socket.on('payment_success', refetch)
+    return () => {
+      socket.off('new_appointment', refetch)
+      socket.off('appointment_update', refetch)
+      socket.off('appointment_cancelled', refetch)
+      socket.off('appointment_completed', refetch)
+      socket.off('new_medical_record', refetch)
+      socket.off('medical_record_updated', refetch)
+      socket.off('payment_success', refetch)
+    }
+  }, [socket, fetchDashboardData])
 
   const handleRefresh = () => {
     fetchDashboardData()
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return ''
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      })
-    } catch (error) {
-      return dateString
-    }
-  }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
-      case 'completed':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300'
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
-    }
-  }
 
   if (isLoading) {
     return (
@@ -161,7 +159,7 @@ const PatientDashboard = () => {
             <Heart className="h-8 w-8" />
             <div>
               <h1 className="text-2xl font-bold">
-                Welcome back, {user?.firstName}!
+                Welcome, {user?.firstName}!
               </h1>
               <p className="text-primary-100 dark:text-primary-200">
                 Your health journey continues here. Stay on track with your appointments and records.
@@ -181,16 +179,7 @@ const PatientDashboard = () => {
                 <RefreshCw className="h-4 w-4" />
               </button>
             </div>
-            <div className="text-xs mt-1 opacity-75">
-              Role: {user?.role || 'No role found'}
-            </div>
-            <div className="text-xs mt-1 opacity-50">
-              Debug: {JSON.stringify({
-                pub: user?.publicMetadata,
-                unsafe: user?.unsafeMetadata,
-                userId: user?.id
-              })}
-            </div>
+            
           </div>
         </div>
       </div>
@@ -208,90 +197,34 @@ const PatientDashboard = () => {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <div key={stat.name} className="card">
-              <div className="card-content">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {stat.name}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stat.value}
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      {/* Overview Stats */}
+      <OverviewStats 
+        stats={stats} 
+        role="patient" 
+        isLoading={isLoading}
+        autoRefresh={true}
+        refreshInterval={30000}
+      />
 
-      {/* Recent Appointments */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">Recent Appointments</h2>
-          <Link to="/dashboard/appointments" className="btn-primary btn-sm">
-            View All
-          </Link>
-        </div>
-        <div className="card-content">
-          {recentAppointments.length > 0 ? (
-            <div className="space-y-4">
-              {recentAppointments.map((appointment) => (
-                <div key={appointment._id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
-                      <Calendar className="h-6 w-6 text-primary-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {appointment.doctor?.specialization || 'General Medicine'}
-                      </p>
-                      <div className="flex items-center space-x-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        <span>{formatDate(appointment.appointmentDate)}</span>
-                        <span>{appointment.appointmentTime}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
-                      {appointment.status}
-                    </span>
-                    {appointment.reason && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs truncate">
-                        {appointment.reason}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                No upcoming appointments
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                You don't have any appointments scheduled at the moment.
-              </p>
-              <Link to="/dashboard/appointments/book" className="btn-primary">
-                Book Appointment
-              </Link>
-            </div>
-          )}
-        </div>
+      {/* Recent Activity Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RecentActivity
+          title="Recent Appointments"
+          items={recentAppointments}
+          type="appointments"
+          role="patient"
+          viewAllLink="/dashboard/appointments"
+          isLoading={isLoading}
+        />
+        
+        <RecentActivity
+          title="Diagnostic Bookings"
+          items={diagnosticBookings}
+          type="diagnostics"
+          role="patient"
+          viewAllLink="/dashboard/diagnostics"
+          isLoading={isLoading}
+        />
       </div>
 
       {/* Quick Actions */}
@@ -324,16 +257,16 @@ const PatientDashboard = () => {
           </div>
         </Link>
 
-        <Link to="/dashboard/services" className="card hover:shadow-lg transition-shadow">
+        <Link to="/dashboard/diagnostics" className="card hover:shadow-lg transition-shadow">
           <div className="card-content text-center">
-            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Heart className="h-8 w-8 text-purple-600" />
+            <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <TestTube className="h-8 w-8 text-teal-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Health Services
+              Diagnostic Tests
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Explore our range of healthcare services and specialties
+              Book lab tests and health checkup packages
             </p>
           </div>
         </Link>
@@ -341,6 +274,9 @@ const PatientDashboard = () => {
 
       {/* Services Section */}
       <ServicesSection />
+      
+      {/* AI Chatbot */}
+      <Chatbot role="patient" />
     </div>
   )
 }

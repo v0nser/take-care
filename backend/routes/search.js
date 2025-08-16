@@ -24,7 +24,7 @@ router.get('/', authenticate, async (req, res) => {
     }
 
     const searchQuery = query.trim();
-    const skip = (page - 1) * limit;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
     const results = {
       users: [],
       appointments: [],
@@ -49,17 +49,15 @@ router.get('/', authenticate, async (req, res) => {
 
       // Role-based restrictions
       if (userRole === 'patient') {
-        // Patients can only search for doctors
         userSearchQuery.role = 'doctor';
       } else if (userRole === 'doctor') {
-        // Doctors can search for patients and other doctors
         userSearchQuery.role = { $in: ['patient', 'doctor'] };
       }
       // Admins can search all users
 
       const users = await User.find(userSearchQuery)
         .select('firstName lastName email role specialization phone profileImage')
-        .limit(limit)
+        .limit(parseInt(limit))
         .skip(skip)
         .lean();
 
@@ -96,14 +94,14 @@ router.get('/', authenticate, async (req, res) => {
       const appointments = await Appointment.find(appointmentSearchQuery)
         .populate('patient', 'firstName lastName email')
         .populate('doctor', 'firstName lastName email specialization')
-        .limit(limit)
+        .limit(parseInt(limit))
         .skip(skip)
         .lean();
 
       results.appointments = appointments.map(appointment => ({
         ...appointment,
         type: 'appointment',
-        displayName: `Appointment - ${appointment.patient.firstName} ${appointment.patient.lastName}`,
+        displayName: `Appointment - ${appointment.patient?.firstName} ${appointment.patient?.lastName}`,
         subtitle: `${appointment.type} - ${appointment.reason}`,
         href: `/dashboard/appointments/${appointment._id}`,
         date: appointment.appointmentDate
@@ -134,7 +132,7 @@ router.get('/', authenticate, async (req, res) => {
       const medicalRecords = await MedicalRecord.find(recordSearchQuery)
         .populate('patient', 'firstName lastName email')
         .populate('doctor', 'firstName lastName email')
-        .limit(limit)
+        .limit(parseInt(limit))
         .skip(skip)
         .lean();
 
@@ -142,7 +140,7 @@ router.get('/', authenticate, async (req, res) => {
         ...record,
         type: 'medicalRecord',
         displayName: `${record.recordType} - ${record.title}`,
-        subtitle: `${record.patient.firstName} ${record.patient.lastName}`,
+        subtitle: `${record.patient?.firstName} ${record.patient?.lastName}`,
         href: `/dashboard/records/${record._id}`,
         date: record.date
       }));
@@ -169,7 +167,7 @@ router.get('/', authenticate, async (req, res) => {
       const payments = await Payment.find(paymentSearchQuery)
         .populate('user', 'firstName lastName email')
         .populate('doctor', 'firstName lastName email')
-        .limit(limit)
+        .limit(parseInt(limit))
         .skip(skip)
         .lean();
 
@@ -194,14 +192,14 @@ router.get('/', authenticate, async (req, res) => {
         ]
       })
         .populate('user', 'firstName lastName email')
-        .limit(limit)
+        .limit(parseInt(limit))
         .skip(skip)
         .lean();
 
       results.activityLogs = activityLogs.map(log => ({
         ...log,
         type: 'activityLog',
-        displayName: `${log.action} - ${log.user.firstName} ${log.user.lastName}`,
+        displayName: `${log.action} - ${log.user?.firstName} ${log.user?.lastName}`,
         subtitle: log.description,
         href: `/dashboard/logs/${log._id}`,
         date: log.timestamp
@@ -214,9 +212,9 @@ router.get('/', authenticate, async (req, res) => {
                         results.activityLogs.length;
     
     results.totalResults = totalResults;
-    results.hasMore = totalResults >= limit;
+    results.hasMore = totalResults >= parseInt(limit);
 
-    // Sort all results by relevance (exact matches first, then partial matches)
+    // Combine all results
     const allResults = [
       ...results.users,
       ...results.appointments,
@@ -246,7 +244,7 @@ router.get('/', authenticate, async (req, res) => {
       data: {
         results: allResults,
         totalResults,
-        hasMore,
+        hasMore: results.hasMore,
         query: searchQuery,
         filters: { type, role }
       }
@@ -330,7 +328,7 @@ router.get('/suggestions', authenticate, async (req, res) => {
       suggestions.push(...appointments.map(appointment => ({
         type: 'appointment',
         displayName: `${appointment.type} - ${appointment.reason}`,
-        subtitle: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+        subtitle: `${appointment.patient?.firstName} ${appointment.patient?.lastName}`,
         href: `/dashboard/appointments/${appointment._id}`
       })));
     }
@@ -350,4 +348,4 @@ router.get('/suggestions', authenticate, async (req, res) => {
   }
 });
 
-export default router; 
+export default router;

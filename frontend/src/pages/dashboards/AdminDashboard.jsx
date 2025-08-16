@@ -1,6 +1,9 @@
 import { useAuth } from '../../contexts/AuthContext'
 import { useApi } from '../../contexts/ApiContext'
-import { Users, Calendar, CreditCard, Activity, Settings, Shield, RefreshCw, Loader2, TrendingUp, TrendingDown } from 'lucide-react'
+import { Users, Calendar, CreditCard, Activity, Settings, Shield, RefreshCw, Loader2, TrendingUp, TrendingDown, TestTube } from 'lucide-react'
+import OverviewStats from '../../components/dashboards/OverviewStats'
+import RecentActivity from '../../components/dashboards/RecentActivity'
+import Chatbot from '../../components/dashboards/Chatbot'
 import { useState, useEffect, useCallback } from 'react'
 
 const AdminDashboard = () => {
@@ -8,6 +11,8 @@ const AdminDashboard = () => {
   const { apiCall } = useApi()
   
   const [stats, setStats] = useState([])
+  const [recentAppointments, setRecentAppointments] = useState([])
+  const [recentActivities, setRecentActivities] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -23,63 +28,60 @@ const AdminDashboard = () => {
       // Fetch appointment statistics
       const appointmentsResponse = await apiCall('/appointments/stats/overview', 'GET')
 
+      // Fetch recent appointments
+      const recentAppointmentsResponse = await apiCall('/appointments', 'GET', {
+        limit: 5
+      })
+
       // Fetch payment statistics
       const paymentsResponse = await apiCall('/payments/stats/overview', 'GET')
 
       // Fetch activity log statistics
       const logsResponse = await apiCall('/logs/stats', 'GET')
 
+      // Fetch recent activity logs
+      const recentLogsResponse = await apiCall('/logs', 'GET', {
+        limit: 5
+      })
+
+      if (recentAppointmentsResponse.success) {
+        setRecentAppointments(recentAppointmentsResponse.appointments || [])
+      }
+
+      if (recentLogsResponse.success) {
+        setRecentActivities(recentLogsResponse.logs || [])
+      }
+
       // Calculate stats from real data
       const totalUsers = usersResponse.success ? usersResponse.stats?.totalUsers || 0 : 0
       const activeAppointments = appointmentsResponse.success ? appointmentsResponse.stats?.totalAppointments || 0 : 0
       const monthlyRevenue = paymentsResponse.success ? paymentsResponse.stats?.monthlyRevenue || 0 : 0
+      const activeDoctors = usersResponse.success ? usersResponse.stats?.doctorCount || 0 : 0
       
       // Calculate system health based on recent activity
       const recentLogs = logsResponse.success ? logsResponse.stats?.recentActivity || 0 : 0
       const systemHealth = recentLogs > 0 ? '99.9%' : '99.8%'
 
-      // Calculate trends (mock for now, could be enhanced with historical data)
-      const userTrend = '+12%'
-      const appointmentTrend = '+8%'
-      const revenueTrend = '+23%'
-      const healthTrend = '+0.1%'
-
       const newStats = [
         {
           name: 'Total Users',
-          value: totalUsers.toLocaleString(),
-          icon: Users,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50',
-          change: userTrend,
-          trend: 'up',
+          value: totalUsers,
+          trend: totalUsers > 100 ? 'Growing user base' : 'Building community'
         },
         {
-          name: 'Active Appointments',
-          value: activeAppointments.toLocaleString(),
-          icon: Calendar,
-          color: 'text-green-600',
-          bgColor: 'bg-green-50',
-          change: appointmentTrend,
-          trend: 'up',
+          name: 'Active Doctors',
+          value: activeDoctors,
+          trend: activeDoctors > 10 ? 'Healthcare providers' : 'Expanding network'
         },
         {
-          name: 'Monthly Revenue',
+          name: 'Total Revenue',
           value: `₹${monthlyRevenue.toLocaleString()}`,
-          icon: CreditCard,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-50',
-          change: revenueTrend,
-          trend: 'up',
+          trend: monthlyRevenue > 0 ? 'Platform earnings' : 'Revenue tracking'
         },
         {
-          name: 'System Health',
+          name: 'Platform Health',
           value: systemHealth,
-          icon: Activity,
-          color: 'text-accent-600',
-          bgColor: 'bg-accent-50',
-          change: healthTrend,
-          trend: 'up',
+          trend: recentLogs > 0 ? 'System active' : 'Monitoring performance'
         },
       ]
 
@@ -164,38 +166,34 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <div key={stat.name} className="card">
-              <div className="card-content">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      {stat.name}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stat.value}
-                    </p>
-                    <div className="flex items-center space-x-1 mt-1">
-                      {stat.trend === 'up' ? (
-                        <TrendingUp className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <TrendingDown className="h-4 w-4 text-red-600" />
-                      )}
-                      <p className={`text-sm font-medium ${
-                        stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {stat.change} from last month
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                            </div>
-        </div>
+      {/* Overview Stats */}
+      <OverviewStats 
+        stats={stats} 
+        role="admin" 
+        isLoading={isLoading}
+        autoRefresh={true}
+        refreshInterval={30000}
+      />
+
+      {/* Recent Activity Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RecentActivity
+          title="Recent Appointments"
+          items={recentAppointments}
+          type="appointments"
+          role="admin"
+          viewAllLink="/dashboard/appointments"
+          isLoading={isLoading}
+        />
+        
+        <RecentActivity
+          title="System Activity"
+          items={recentActivities}
+          type="activity"
+          role="admin"
+          viewAllLink="/dashboard/logs"
+          isLoading={isLoading}
+        />
       </div>
 
       {/* System Status */}
@@ -224,10 +222,6 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  )
-})}
       </div>
 
       {/* Management Cards */}
@@ -376,6 +370,9 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+      
+      {/* AI Chatbot */}
+      <Chatbot role="admin" />
     </div>
   )
 }

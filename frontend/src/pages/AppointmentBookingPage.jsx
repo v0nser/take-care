@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 
 const AppointmentBookingPage = () => {
   const { user } = useAuth();
+  const [lastAppointmentId, setLastAppointmentId] = useState(null);
 
   // Redirect non-patients
   if (user?.role !== 'patient') {
@@ -52,7 +53,7 @@ const AppointmentBookingPage = () => {
       </div>
 
       {/* Appointment Booking Component */}
-      <AppointmentBooking />
+      <AppointmentBooking onBooked={(appointmentId) => setLastAppointmentId(appointmentId)} />
     </div>
   );
 };

@@ -9,12 +9,17 @@ const paymentSchema = new mongoose.Schema({
   appointment: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Appointment',
-    required: true // Restored to true since we're re-enabling appointments
+    required: false // Made optional to support diagnostic bookings
+  },
+  diagnosticBooking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DiagnosticBooking',
+    required: false
   },
   doctor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false // Made optional for diagnostic bookings
   },
   
   // Payment Details
@@ -133,7 +138,7 @@ const paymentSchema = new mongoose.Schema({
 paymentSchema.index({ user: 1, createdAt: -1 });
 paymentSchema.index({ appointment: 1 });
 paymentSchema.index({ razorpayOrderId: 1 });
-paymentSchema.index({ razorpayPaymentId: 1 });
+// Removed razorpayPaymentId index - causes duplicate key errors with null values
 paymentSchema.index({ status: 1 });
 
 // Virtual for formatted amount

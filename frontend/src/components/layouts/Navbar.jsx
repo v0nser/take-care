@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronDown, User, ArrowRight, LogOut, Settings, Sparkles, Crown } from 'lucide-react';
+import { Menu, X, ChevronDown, User, ArrowRight, LogOut, Settings, Sparkles, Crown, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { Link } from 'react-router-dom';
 import ConnectionStatus from '../ui/ConnectionStatus';
 
 const navLinks = [
   { name: 'Home', href: '/' },
   { name: 'Services', href: '/services' },
+  { name: 'Diagnostics', href: '/diagnostics' },
   { name: 'Features', href: '/#features' },
-  { name: 'Pricing', href: '/#pricing' },
   { name: 'About', href: '/about' },
   { name: 'Contact', href: '/contact' },
 ];
@@ -18,6 +19,7 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { isSignedIn, user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,6 +81,19 @@ const Navbar = () => {
 
           {/* Elegant Desktop Auth Section */}
           <div className="hidden lg:flex items-center space-x-4">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-3 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-700/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-600/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              {theme === 'light' ? (
+                <Moon className="h-5 w-5 text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
+              ) : (
+                <Sun className="h-5 w-5 text-gray-300 dark:text-gray-300 group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-colors duration-300" />
+              )}
+            </button>
+
             {isSignedIn ? (
               <div className="flex items-center space-x-4">
                 {/* Enhanced Connection Status */}
@@ -214,6 +229,21 @@ const Navbar = () => {
         {isOpen && (
           <div className="lg:hidden">
             <div className="px-6 py-6 space-y-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl mt-4 border border-gray-200/30 dark:border-slate-700/30 shadow-2xl">
+              {/* Mobile Theme Toggle */}
+              <div className="flex justify-center pb-4 border-b border-gray-200/30 dark:border-gray-700/30">
+                <button
+                  onClick={toggleTheme}
+                  className="p-3 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-700/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-600/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group"
+                  title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                >
+                  {theme === 'light' ? (
+                    <Moon className="h-5 w-5 text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
+                  ) : (
+                    <Sun className="h-5 w-5 text-gray-300 dark:text-gray-300 group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-colors duration-300" />
+                  )}
+                </button>
+              </div>
+
               {navLinks.map((link, index) => (
                 <a
                   key={link.name}

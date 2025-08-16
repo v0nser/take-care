@@ -19,6 +19,7 @@ import logRoutes from './routes/logs.js';
 import availabilityRoutes from './routes/availability.js';
 import searchRoutes from './routes/search.js';
 import seedRoutes from './routes/seed.js';
+import diagnosticRoutes from './routes/diagnostics.js';
 
 // Load environment variables
 dotenv.config();
@@ -91,6 +92,7 @@ app.use('/api/logs', logRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/seed', seedRoutes);
+app.use('/api/diagnostics', diagnosticRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -1,5 +1,6 @@
 import express from 'express';
 import seedData from '../utils/seedData.js';
+import { seedDiagnosticData } from '../utils/diagnosticSeedData.js';
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ router.post('/database', async (req, res) => {
 
   try {
     await seedData();
+    await seedDiagnosticData();
     
     res.json({
       success: true,
@@ -28,7 +30,9 @@ router.post('/database', async (req, res) => {
         patients: 3,
         admin: 1,
         appointments: 3,
-        availability: 24
+        availability: 24,
+        diagnosticTests: 16,
+        diagnosticPackages: 8
       },
       credentials: {
         admin: {

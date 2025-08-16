@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useSocket } from '../../contexts/SocketContext'
+import { useNotifications } from '../../hooks/useNotifications'
 import {
   Heart,
   Calendar,
@@ -46,11 +47,23 @@ import { clsx } from 'clsx'
 import ConnectionStatus from '../ui/ConnectionStatus'
 import ResponsiveSearchBar from '../ui/ResponsiveSearchBar'
 import CompactSearchBar from '../ui/CompactSearchBar'
+import Chatbot from '../dashboards/Chatbot'
+import { useApi } from '../../contexts/ApiContext'
+
+function formatWhen(iso) {
+  const d = new Date(iso)
+  const diff = (Date.now() - d.getTime()) / 1000
+  if (diff < 60) return 'Just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`
+  return d.toLocaleString()
+}
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  const { isConnected } = useSocket()
+  const { isConnected, socket } = useSocket()
+  const { apiCall } = useApi()
   const location = useLocation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -61,6 +74,7 @@ const DashboardLayout = () => {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState({})
+  const [upcomingCount, setUpcomingCount] = useState(0)
 
   const userRole = user?.role || 'patient'
   
@@ -70,6 +84,37 @@ const DashboardLayout = () => {
     finalRole: userRole,
     currentPath: location.pathname
   })
+
+  // Load upcoming appointments count
+  useEffect(() => {
+    const loadUpcoming = async () => {
+      try {
+        const res = await apiCall('/appointments', 'GET', { upcoming: 'true', limit: 20 })
+        if (res.success && Array.isArray(res.appointments)) {
+          setUpcomingCount(res.appointments.length)
+        } else if (res.success && Array.isArray(res.data?.appointments)) {
+          setUpcomingCount(res.data.appointments.length)
+        } else {
+          setUpcomingCount(0)
+        }
+      } catch (e) {
+        setUpcomingCount(0)
+      }
+    }
+    loadUpcoming()
+    if (!socket) return
+    const refetch = () => loadUpcoming()
+    socket.on('new_appointment', refetch)
+    socket.on('appointment_update', refetch)
+    socket.on('appointment_cancelled', refetch)
+    socket.on('appointment_completed', refetch)
+    return () => {
+      socket.off('new_appointment', refetch)
+      socket.off('appointment_update', refetch)
+      socket.off('appointment_cancelled', refetch)
+      socket.off('appointment_completed', refetch)
+    }
+  }, [apiCall, socket])
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -118,7 +163,7 @@ const DashboardLayout = () => {
             name: 'Appointments', 
             href: '/dashboard/appointments', 
             icon: Calendar, 
-            badge: '12', 
+            badge: null, 
             gradient: 'from-blue-500 to-indigo-600',
             subItems: [
               { name: 'View Appointments', href: '/dashboard/appointments' },
@@ -135,22 +180,29 @@ const DashboardLayout = () => {
       default:
         return [
           { name: 'Overview', href: '/dashboard/patient', icon: Heart, badge: null, gradient: 'from-pink-500 to-rose-600' },
-          { 
-            name: 'Appointments', 
-            href: '/dashboard/appointments', 
-            icon: Calendar, 
-            badge: '2', 
+          {
+            name: 'Appointments',
+            href: '/dashboard/appointments',
+            icon: Calendar,
+            badge: upcomingCount > 0 ? `${upcomingCount}` : null,
             gradient: 'from-blue-500 to-indigo-600',
             subItems: [
               { name: 'View Appointments', href: '/dashboard/appointments' },
               { name: 'Book Appointment', href: '/dashboard/appointments/book' }
             ]
           },
-          { name: 'Find Doctors', href: '/dashboard/doctors', icon: Users, badge: null, gradient: 'from-green-500 to-emerald-600' },
+          // { name: 'Find Doctors', href: '/dashboard/doctors', icon: Users, badge: null, gradient: 'from-green-500 to-emerald-600' },
           { name: 'Services', href: '/dashboard/services', icon: Stethoscope, badge: null, gradient: 'from-indigo-500 to-purple-600' },
+          { 
+            name: 'Diagnostics', 
+            href: '/dashboard/diagnostics', 
+            icon: Activity, 
+            badge: null, 
+            gradient: 'from-amber-500 to-orange-600'
+          },
           { name: 'Medical Records', href: '/dashboard/records', icon: FileText, badge: null, gradient: 'from-purple-500 to-violet-600' },
           { name: 'Payments', href: '/dashboard/payments', icon: CreditCard, badge: null, gradient: 'from-yellow-500 to-orange-600' },
-          { name: 'Profile', href: '/dashboard/profile', icon: User, badge: null, gradient: 'from-cyan-500 to-blue-600' },
+          // { name: 'Profile', href: '/dashboard/profile', icon: User, badge: null, gradient: 'from-cyan-500 to-blue-600' },
           ...baseItems,
         ]
     }
@@ -199,13 +251,8 @@ const DashboardLayout = () => {
 
   const dashboardInfo = getDashboardInfo()
   const RoleIcon = dashboardInfo.roleIcon
+  const { items: notifications, unreadCount, markRead } = useNotifications()
 
-  // Mock notifications data
-  const notifications = [
-    { id: 1, title: 'New appointment scheduled', time: '5 min ago', type: 'appointment' },
-    { id: 2, title: 'Payment received', time: '10 min ago', type: 'payment' },
-    { id: 3, title: 'Medical record updated', time: '1 hour ago', type: 'record' },
-  ]
 
   // Sidebar Component
   const Sidebar = ({ isDesktop = false }) => (
@@ -334,6 +381,8 @@ const DashboardLayout = () => {
               console.log('🔥 Navigating to (collapsed with subitems):', item.href);
               navigate(item.href);
             } else if (hasSubItems) {
+              // For items with sub-items, just expand/collapse the menu
+              // Don't navigate automatically - let user choose from sub-items
               console.log('🔥 Expanding menu for:', item.name);
               setExpandedMenus(prev => ({
                 ...prev,
@@ -422,6 +471,12 @@ const DashboardLayout = () => {
                       )}
                     </div>
                     
+                    {hasSubItems && (
+                      <div className="mt-2 text-xs text-gray-300 border-t border-gray-600 pt-2">
+                        {item.name === 'Diagnostics' ? 'Click to see options, then choose "Quick Book" for direct access' : 'Click to expand menu'}
+                      </div>
+                    )}
+                    
                     {/* Arrow pointer */}
                     <div className="absolute right-full top-1/2 transform -translate-y-1/2">
                       <div className="border-8 border-transparent border-r-gray-900 dark:border-r-gray-700"></div>
@@ -491,22 +546,41 @@ const DashboardLayout = () => {
               
               {/* Sub-items */}
               {hasSubItems && isExpanded && (
-                <div className="ml-4 mt-2 space-y-1">
+                <div className="ml-4 mt-3 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+                  <div className="text-xs text-gray-500 font-medium mb-2">
+                    {item.name === 'Diagnostics' ? '📋 Choose your diagnostics action:' : 'Choose an option:'}
+                  </div>
                   {item.subItems.map((subItem) => {
                     const isSubActive = location.pathname === subItem.href
+                    const isSpecial = subItem.special
                     return (
                       <Link
                         key={subItem.name}
                         to={subItem.href}
                         className={clsx(
-                          'flex items-center px-4 py-3 rounded-xl text-sm transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800',
-                          isSubActive
-                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                          'flex items-center px-4 py-3 rounded-xl text-sm transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800 border',
+                          isSpecial 
+                            ? 'border-orange-300 dark:border-orange-600 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 text-orange-700 dark:text-orange-300 hover:from-orange-100 hover:to-amber-100'
+                            : isSubActive
+                              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium border-blue-300 dark:border-blue-600'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border-gray-200 dark:border-gray-700'
                         )}
                       >
-                        <div className="w-2 h-2 rounded-full bg-current mr-3 opacity-60"></div>
+                        <div className={clsx(
+                          'w-2 h-2 rounded-full mr-3',
+                          isSpecial ? 'bg-orange-500' : isSubActive ? 'bg-blue-500' : 'bg-gray-400'
+                        )}></div>
                         {subItem.name}
+                        {isSpecial && (
+                          <span className="ml-auto text-xs bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400 px-2 py-1 rounded-full font-medium">
+                            Recommended
+                          </span>
+                        )}
+                        {isSubActive && !isSpecial && (
+                          <span className="ml-auto text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full">
+                            Active
+                          </span>
+                        )}
                       </Link>
                     )
                   })}
@@ -767,8 +841,12 @@ const DashboardLayout = () => {
                   className="p-4 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 relative group border border-gray-200/50 dark:border-gray-600/50 backdrop-blur-xl"
                 >
                   <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
-                  <div className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full"></div>
-                  <div className="absolute top-3 right-3 w-2 h-2 bg-red-400 rounded-full animate-ping"></div>
+                  {unreadCount > 0 && (
+                    <>
+                      <div className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full"></div>
+                      <div className="absolute top-3 right-3 w-2 h-2 bg-red-400 rounded-full animate-ping"></div>
+                    </>
+                  )}
                 </button>
                 
                 {/* Enhanced Notifications dropdown - keeping existing */}
@@ -778,26 +856,35 @@ const DashboardLayout = () => {
                       <div className="flex items-center justify-between">
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-wide">Notifications</h3>
                         <span className="px-3 py-1 text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full">
-                          {notifications.length} new
+                          {unreadCount} new
                         </span>
                       </div>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
-                      {notifications.map((notification) => (
-                        <div key={notification.id} className="p-4 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-all duration-300 border-b border-gray-100/50 dark:border-gray-700/50 last:border-b-0 group cursor-pointer">
-                          <div className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 group-hover:scale-125 transition-transform duration-300"></div>
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
-                                {notification.title}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                                {notification.time}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                     {notifications.map((n) => (
+                       <div
+                         key={n._id}
+                         onClick={() => markRead(n._id)}
+                         className="p-4 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-all duration-300 border-b border-gray-100/50 dark:border-gray-700/50 last:border-b-0 group cursor-pointer"
+                       >
+                         <div className="flex items-start space-x-3">
+                           <div className={`w-2 h-2 rounded-full mt-2 ${n.readAt ? 'bg-gray-300' : 'bg-blue-500'}`} />
+                           <div className="flex-1">
+                             <p className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                               {n.title}
+                             </p>
+                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                               {formatWhen(n.createdAt)}
+                             </p>
+                             {n.message && (
+                               <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                                 {n.message}
+                               </p>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                     ))}
                     </div>
                     <div className="p-4 border-t border-gray-200/30 dark:border-gray-700/30">
                       <button className="w-full text-center text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-300 py-2 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20">
@@ -808,10 +895,7 @@ const DashboardLayout = () => {
                 )}
               </div>
 
-              {/* Help - Elegant */}
-              <button className="p-4 rounded-2xl bg-white/60 dark:bg-gray-800/60 hover:bg-white dark:hover:bg-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group border border-gray-200/50 dark:border-gray-600/50 backdrop-blur-xl">
-                <HelpCircle className="h-5 w-5 text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300" />
-              </button>
+              
 
               {/* Enhanced User menu - Premium */}
               <div className="relative dropdown-container">
@@ -918,6 +1002,9 @@ const DashboardLayout = () => {
           </div>
         </main>
       </div>
+      
+      {/* AI Chatbot */}
+      <Chatbot role={userRole} />
     </div>
   )
 }

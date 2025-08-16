@@ -90,6 +90,13 @@ export const SocketProvider = ({ children }) => {
         }
       })
 
+      // Expose globally for debug/fallback consumers
+      if (typeof window !== 'undefined') {
+        window.__takecare_socket = socketInstance
+        // Also expose as window.socket for Razorpay integration
+        window.socket = socketInstance
+      }
+
       // Connection event handlers
       socketInstance.on('connect', () => {
         console.log('✅ Socket connected successfully')
@@ -281,6 +288,10 @@ export const SocketProvider = ({ children }) => {
       setIsConnected(false)
       setConnectionStatus('disconnected')
       setReconnectAttempts(0)
+      if (typeof window !== 'undefined') {
+        window.__takecare_socket = null
+        window.socket = null
+      }
     }
 
     // Cleanup on unmount
@@ -321,7 +332,7 @@ export const SocketProvider = ({ children }) => {
     lastConnected,
     reconnectAttempts,
     maxReconnectAttempts,
-    isOnline: navigator.onLine,
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   }
 
   return (

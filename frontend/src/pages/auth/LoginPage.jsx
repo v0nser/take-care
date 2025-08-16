@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, ArrowRight, Sparkles, Shield, Heart } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const LoginPage = () => {
   const { login, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -61,6 +63,15 @@ const LoginPage = () => {
 
     try {
       await login(formData);
+      
+      // Check for redirect from location state (diagnostics booking)
+      if (location.state?.redirectTo) {
+        navigate(location.state.redirectTo, { 
+          state: location.state.redirectState 
+        });
+        return;
+      }
+      
       // Check for return URL from query params
       const returnUrl = searchParams.get('returnUrl');
       if (returnUrl) {
@@ -77,152 +88,279 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
-            Welcome back
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Sign in to your account
-          </p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236366F1' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+      
+      {/* Floating shapes */}
+      <motion.div 
+        className="absolute top-20 right-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl"
+        animate={{ 
+          y: [0, -30, 0],
+          rotate: [0, 180, 360]
+        }}
+        transition={{ 
+          duration: 20,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+      />
+      <motion.div 
+        className="absolute bottom-20 left-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"
+        animate={{ 
+          y: [0, 30, 0],
+          rotate: [360, 180, 0]
+        }}
+        transition={{ 
+          duration: 25,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+      />
 
-        {/* Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 space-y-6">
-            
-            {/* Global Error */}
-            {error && (
-              <div className="flex items-center space-x-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-red-500" />
-                <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
-              </div>
-            )}
-
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white transition-colors ${
-                    localErrors.email 
-                      ? 'border-red-300 dark:border-red-600' 
-                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-                  }`}
-                  placeholder="Enter your email"
-                />
-              </div>
-              {localErrors.email && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{localErrors.email}</p>
-              )}
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white transition-colors ${
-                    localErrors.password 
-                      ? 'border-red-300 dark:border-red-600' 
-                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-                  }`}
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
-              {localErrors.password && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{localErrors.password}</p>
-              )}
-            </div>
-
-            {/* Remember me and Forgot password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                  Remember me
-                </label>
-              </div>
-              <div className="text-sm">
-                <Link 
-                  to="/forgot-password" 
-                  className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-                >
-                  Forgot your password?
-                </Link>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      <div className="relative z-10 min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          {/* Header */}
+          <motion.div 
+            className="text-center"
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            {/* Logo */}
+            <motion.div 
+              className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-2xl"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
             >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signing in...
-                </div>
-              ) : (
-                'Sign in'
-              )}
-            </button>
-          </div>
-
-          {/* Register Link */}
-          <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Don't have an account?{' '}
-              <Link 
-                to={`/register${searchParams.get('returnUrl') ? `?returnUrl=${searchParams.get('returnUrl')}` : ''}`}
-                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+              <Heart className="h-8 w-8 text-white" />
+            </motion.div>
+            
+            <motion.h2 
+              className="text-4xl font-bold text-white mb-3"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+            >
+              Welcome back
+            </motion.h2>
+            <motion.p 
+              className="text-lg text-blue-100/80"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              {location.state?.redirectTo ? 
+                'Sign in to continue with your diagnostic booking' : 
+                'Sign in to your account'
+              }
+            </motion.p>
+            
+            {location.state?.redirectTo && (
+              <motion.div 
+                className="mt-4 p-4 bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 rounded-2xl"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
               >
-                Create one here
-              </Link>
-            </p>
-          </div>
-        </form>
+                <p className="text-sm text-blue-200">
+                  📋 You're booking: {location.state.redirectState?.type === 'package' ? 
+                    `Diagnostic Package - ${location.state.redirectState.packageName}` : 
+                    'Diagnostic Test'
+                  }
+                </p>
+              </motion.div>
+            )}
+          </motion.div>
+
+          {/* Form */}
+          <motion.form 
+            className="mt-8 space-y-6" 
+            onSubmit={handleSubmit}
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+          >
+            <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-8 space-y-6">
+              
+              {/* Global Error */}
+              {error && (
+                <motion.div 
+                  className="flex items-center space-x-3 p-4 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-2xl"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <AlertCircle className="h-5 w-5 text-red-400" />
+                  <span className="text-sm text-red-200">{error}</span>
+                </motion.div>
+              )}
+
+              {/* Email Field */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                <label htmlFor="email" className="block text-sm font-semibold text-white mb-3">
+                  Email Address
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-blue-300 group-focus-within:text-blue-400 transition-colors" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={`block w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-sm border rounded-2xl text-white placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 ${
+                      localErrors.email 
+                        ? 'border-red-400/50' 
+                        : 'border-white/20 hover:border-white/30 focus:border-transparent'
+                    }`}
+                    placeholder="Enter your email"
+                  />
+                </div>
+                {localErrors.email && (
+                  <motion.p 
+                    className="mt-2 text-sm text-red-300"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    {localErrors.email}
+                  </motion.p>
+                )}
+              </motion.div>
+
+              {/* Password Field */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+              >
+                <label htmlFor="password" className="block text-sm font-semibold text-white mb-3">
+                  Password
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-blue-300 group-focus-within:text-blue-400 transition-colors" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className={`block w-full pl-12 pr-12 py-4 bg-white/10 backdrop-blur-sm border rounded-2xl text-white placeholder-blue-200/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300 ${
+                      localErrors.password 
+                        ? 'border-red-400/50' 
+                        : 'border-white/20 hover:border-white/30 focus:border-transparent'
+                    }`}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-blue-300 hover:text-blue-400 transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                {localErrors.password && (
+                  <motion.p 
+                    className="mt-2 text-sm text-red-300"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    {localErrors.password}
+                  </motion.p>
+                )}
+              </motion.div>
+
+              {/* Remember me and Forgot password */}
+              <motion.div 
+                className="flex items-center justify-between"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+              >
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-500 focus:ring-blue-400 border-white/30 rounded bg-white/10"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-blue-100">
+                    Remember me
+                  </label>
+                </div>
+                <div className="text-sm">
+                  <Link 
+                    to="/forgot-password" 
+                    className="font-medium text-blue-300 hover:text-blue-200 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+              </motion.div>
+
+              {/* Submit Button */}
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                className="group relative w-full flex justify-center py-4 px-6 border border-transparent text-lg font-semibold rounded-2xl text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-xl hover:shadow-2xl hover:shadow-blue-500/25 overflow-hidden"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.9 }}
+              >
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out"></div>
+                
+                {isLoading ? (
+                  <div className="flex items-center relative z-10">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                    Signing in...
+                  </div>
+                ) : (
+                  <div className="flex items-center relative z-10">
+                    Sign in
+                    <ArrowRight className="ml-2 h-5 w-5 transform group-hover:translate-x-1 transition-transform duration-300" />
+                  </div>
+                )}
+              </motion.button>
+            </div>
+
+            {/* Register Link */}
+            <motion.div 
+              className="text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1 }}
+            >
+              <p className="text-blue-100/80">
+                Don't have an account?{' '}
+                <Link 
+                  to={`/register${searchParams.get('returnUrl') ? `?returnUrl=${searchParams.get('returnUrl')}` : ''}`}
+                  className="font-semibold text-blue-300 hover:text-blue-200 transition-colors hover:underline"
+                >
+                  Create one here
+                </Link>
+              </p>
+            </motion.div>
+          </motion.form>
+        </div>
       </div>
     </div>
   );

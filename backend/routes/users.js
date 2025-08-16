@@ -226,22 +226,22 @@ router.put('/:id/toggle-status', authenticate, authorize('admin'), async (req, r
 
 /**
  * @route   GET /api/users/stats
- * @desc    Get user statistics (Admin only)
+ * @desc    Get user statistics (admin only)
  * @access  Private (Admin)
  */
 router.get('/stats', authenticate, authorize('admin'), async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const activeUsers = await User.countDocuments({ isActive: true });
-    const patientCount = await User.countDocuments({ role: 'patient' });
-    const doctorCount = await User.countDocuments({ role: 'doctor' });
-    const adminCount = await User.countDocuments({ role: 'admin' });
+    const doctorCount = await User.countDocuments({ role: 'doctor', isActive: true });
+    const patientCount = await User.countDocuments({ role: 'patient', isActive: true });
+    const adminCount = await User.countDocuments({ role: 'admin', isActive: true });
 
-    // Recent registrations (last 7 days)
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    const recentRegistrations = await User.countDocuments({
-      createdAt: { $gte: weekAgo }
+    // Get users registered in the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const newUsers = await User.countDocuments({ 
+      createdAt: { $gte: thirtyDaysAgo } 
     });
 
     res.json({
@@ -249,11 +249,11 @@ router.get('/stats', authenticate, authorize('admin'), async (req, res) => {
       stats: {
         totalUsers,
         activeUsers,
-        inactiveUsers: totalUsers - activeUsers,
-        patientCount,
         doctorCount,
+        patientCount,
         adminCount,
-        recentRegistrations
+        newUsers,
+        inactiveUsers: totalUsers - activeUsers
       }
     });
   } catch (error) {

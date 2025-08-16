@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo, useEffect } from 'react'
 import { useAuth } from './AuthContext'
 import axios from 'axios'
 
@@ -15,51 +15,89 @@ export const useApi = () => {
 export const ApiProvider = ({ children }) => {
   const { getToken } = useAuth()
 
-  // Create axios instance
-  const api = axios.create({
+  // Create axios instance once
+  const api = useMemo(() => axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  })
+    headers: { 'Content-Type': 'application/json' },
+  }), [])
 
-  // Request interceptor to add auth token
-  api.interceptors.request.use(
-    async (config) => {
-      try {
-        const token = await getToken()
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
+  // Attach interceptors once
+  useEffect(() => {
+    const reqId = api.interceptors.request.use(
+      async (config) => {
+        try {
+          const token = await getToken()
+          if (token) config.headers.Authorization = `Bearer ${token}`
+        } catch (error) {
+          console.error('Failed to get auth token:', error)
         }
-      } catch (error) {
-        console.error('Failed to get auth token:', error)
+        return config
+      },
+      (error) => Promise.reject(error)
+    )
+
+    const resId = api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          console.error('Unauthorized request:', error.response.data)
+        } else if (error.response?.status === 403) {
+          console.error('Forbidden request:', error.response.data)
+        } else if (error.response?.status >= 500) {
+          console.error('Server error:', error.response.data)
+        }
+        return Promise.reject(error)
       }
-      return config
-    },
-    (error) => {
+    )
+
+    return () => {
+      api.interceptors.request.eject(reqId)
+      api.interceptors.response.eject(resId)
+    }
+  }, [api, getToken])
+
+  // Generic apiCall with proper GET params + backwards-compat payload spreading
+  const apiCall = async (endpoint, method = 'GET', data = null, extraHeaders = {}) => {
+    try {
+      const config = { headers: { ...extraHeaders } }
+      let response
+
+      switch (method.toUpperCase()) {
+        case 'GET':
+          response = await api.get(endpoint, { ...config, params: data || {} })
+          break
+        case 'POST':
+          response = await api.post(endpoint, data, config)
+          break
+        case 'PUT':
+          response = await api.put(endpoint, data, config)
+          break
+        case 'PATCH':
+          response = await api.patch(endpoint, data, config)
+          break
+        case 'DELETE':
+          response = await api.delete(endpoint, { ...config, data })
+          break
+        default:
+          throw new Error(`Unsupported method: ${method}`)
+      }
+
+      const payload = response?.data ?? {}
+      return {
+        success: true,
+        // Spread payload so existing callers using .appointments/.stats still work
+        ...payload,
+        // Also keep raw data available for new callers
+        data: payload,
+        // Legacy convenience mapping
+        booking: payload?.booking || undefined,
+      }
+    } catch (error) {
       return Promise.reject(error)
     }
-  )
+  }
 
-  // Response interceptor to handle errors
-  api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
-        // Handle unauthorized errors
-        console.error('Unauthorized request:', error.response.data)
-      } else if (error.response?.status === 403) {
-        // Handle forbidden errors
-        console.error('Forbidden request:', error.response.data)
-      } else if (error.response?.status >= 500) {
-        // Handle server errors
-        console.error('Server error:', error.response.data)
-      }
-      return Promise.reject(error)
-    }
-  )
-
-  // API methods
+  // API methods (kept as in your code)
   const apiMethods = {
     // Auth endpoints
     auth: {
@@ -146,12 +184,22 @@ export const ApiProvider = ({ children }) => {
       sendJoinNotification: (appointmentId) => api.post(`/meetings/${appointmentId}/join-notification`),
       updatePreConsultation: (appointmentId, data) => api.put(`/meetings/${appointmentId}/pre-consultation`, data),
     },
+
+    // Diagnostics endpoints
+    diagnostics: {
+      create: (data) => api.post('/diagnostics', data),
+      myBookings: (params) => api.get('/diagnostics/my-bookings', { params }),
+      getById: (id) => api.get(`/diagnostics/${id}`),
+      updateStatus: (id, data) => api.patch(`/diagnostics/${id}/status`, data),
+      update: (id, data) => api.put(`/diagnostics/${id}`, data),
+      cancel: (id, data) => api.patch(`/diagnostics/${id}/cancel`, data),
+      adminAll: (params) => api.get('/diagnostics/admin/all', { params }),
+    },
   }
 
-  const value = {
-    api,
-    ...apiMethods,
-  }
+  const value = { api, apiCall, ...apiMethods }
 
   return <ApiContext.Provider value={value}>{children}</ApiContext.Provider>
 }
+
+export default ApiContext

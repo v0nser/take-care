@@ -23,6 +23,13 @@ const activityLogSchema = new mongoose.Schema({
       'payment_initiate',
       'payment_success',
       'payment_failure',
+      'payment_verify',
+      'diagnostic_payment_initiate',
+      'diagnostic_payment_success',
+      'diagnostic_payment_failure',
+      'diagnostic_payment_verify',
+      'diagnostic_booking_create',
+      'diagnostic_booking_cancel',
       'meeting_create',
       'meeting_join',
       'meeting_end',
@@ -41,7 +48,7 @@ const activityLogSchema = new mongoose.Schema({
   // Resource Information
   resourceType: {
     type: String,
-    enum: ['user', 'appointment', 'payment', 'medical_record', 'meeting', 'notification', 'system'],
+    enum: ['user', 'appointment', 'payment', 'medical_record', 'meeting', 'notification', 'system', 'diagnostic_booking'],
     required: true
   },
   resourceId: {

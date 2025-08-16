@@ -6,11 +6,13 @@ import { Calendar, Clock, User, Stethoscope, Search, Filter, ChevronLeft, Chevro
 import { format, addDays, startOfWeek, isSameDay, isAfter, startOfDay } from 'date-fns';
 import toast from 'react-hot-toast';
 import { getAllSpecialtyNames, getSpecialtyById } from '../../utils/servicesData';
+import useRazorpay from '../../hooks/useRazorpay';
 
-const AppointmentBooking = () => {
+const AppointmentBooking = ({ onBooked }) => {
   const { users, availability: availabilityApi, appointments } = useApi();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
+  const { processAppointmentPayment } = useRazorpay();
   
   // Get specialty from URL parameters
   const specialtyFromUrl = searchParams.get('specialty');
@@ -261,6 +263,19 @@ const AppointmentBooking = () => {
       
       if (response.data.success) {
         toast.success('Appointment booked successfully!');
+        const createdAppointmentId = response.data.appointment?._id || response.data.appointment?.id
+        // Optional callback for parent
+        if (typeof onBooked === 'function') onBooked(createdAppointmentId)
+        // Immediately trigger payment flow
+        try {
+          await processAppointmentPayment(createdAppointmentId, {
+            name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Patient',
+            email: user?.email || '',
+            phone: user?.phone || ''
+          })
+        } catch (payErr) {
+          console.error('Payment initiation failed:', payErr)
+        }
         setStep(4);
       }
     } catch (error) {
