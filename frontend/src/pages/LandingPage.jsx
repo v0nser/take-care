@@ -372,14 +372,14 @@ const customStyles = `
   /* Light mode rotating border */
   @media (prefers-color-scheme: light) {
     .rotating-border::after {
-      background: #f8fafc;
+      background: #000000;
     }
   }
 
   /* Dark mode rotating border */
   @media (prefers-color-scheme: dark) {
     .rotating-border::after {
-      background: #0f172a;
+      background: #d8d8d8;
     }
   }
 
@@ -899,8 +899,8 @@ const CircularVideoHero = () => {
           Your browser does not support the video tag.
         </video>
         
-        {/* Video overlay - reduced opacity for better visibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none rounded-full" />
+        {/* Video overlay - adaptive opacity for light/dark mode */}
+        <div className="absolute inset-0 bg-gradient-to-t from-gray/20 via-transparent to-transparent dark:from-black/40 pointer-events-none rounded-full" />
         
         {/* Live indicator - repositioned for better visibility */}
         <motion.div 
@@ -924,17 +924,17 @@ const CircularVideoHero = () => {
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.6 }}
         >
-          <div className="bg-black/70 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/30 shadow-2xl">
+          <div className="bg-white/90 dark:bg-black/70 backdrop-blur-md px-6 py-4 rounded-2xl border border-gray-200/50 dark:border-white/30 shadow-2xl">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
                 <Stethoscope className="h-8 w-8 text-white" />
               </div>
               <div>
-                <div className="font-bold text-xl text-white mb-1">Dr. Sarah Chen</div>
-                <div className="text-sm text-blue-200 font-medium">Cardiologist</div>
+                <div className="font-bold text-xl text-gray-900 dark:text-white mb-1">Dr. Sarah Chen</div>
+                <div className="text-sm text-blue-600 dark:text-blue-200 font-medium">Cardiologist</div>
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-300 font-medium">Available Now</span>
+                  <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-600 dark:text-green-300 font-medium">Available Now</span>
                 </div>
               </div>
             </div>
