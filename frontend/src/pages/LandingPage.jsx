@@ -30,7 +30,8 @@ import {
   HeartPulse,
   Microscope,
   Plus,
-  ChevronRight
+  ChevronRight,
+  Package
 } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,6 +45,48 @@ import { getPopularSpecialties } from '../utils/servicesData';
 // === Modern, Elegant Custom Styles ===
 const customStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+  /* Smart overflow prevention - allow elements to be fully visible */
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  
+  * {
+    box-sizing: border-box;
+  }
+  
+  /* Main page container with proper overflow handling */
+  .page-container {
+    position: relative;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+  
+  /* Hero section with full element visibility */
+  .hero-section {
+    position: relative;
+    width: 100%;
+    overflow: visible;
+    padding-left: 100px;
+    padding-right: 100px;
+  }
+  
+  /* Responsive padding adjustments */
+  @media (max-width: 1200px) {
+    .hero-section {
+      padding-left: 50px;
+      padding-right: 50px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .hero-section {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+  }
 
   .font-jakarta {
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -173,12 +216,13 @@ const customStyles = `
     }
   }
 
-  /* Floating shapes */
+  /* Floating shapes - positioned to stay within bounds */
   .floating-shape {
     position: absolute;
     filter: blur(40px);
     opacity: 0.15;
     z-index: -1;
+    pointer-events: none;
   }
   
   .shape-1 {
@@ -186,7 +230,8 @@ const customStyles = `
     height: 400px;
     background: #667eea;
     top: 10%;
-    left: -10%;
+    left: 0;
+    transform: translateX(-20%);
   }
   
   .shape-2 {
@@ -194,7 +239,8 @@ const customStyles = `
     height: 300px;
     background: #764ba2;
     bottom: 15%;
-    right: -5%;
+    right: 0;
+    transform: translateX(20%);
   }
   
   .shape-3 {
@@ -202,7 +248,7 @@ const customStyles = `
     height: 200px;
     background: #10b981;
     top: 40%;
-    right: 20%;
+    right: 0;
   }
   
   .grid-pattern {
@@ -220,9 +266,25 @@ const customStyles = `
   /* Circular video styles */
   .circular-video-container {
     position: relative;
-    width: 550px;
-    height: 550px;
+    width: 500px;
+    height: 500px;
     margin: 0 auto;
+    max-width: 100%;
+    overflow: visible;
+  }
+  
+  @media (max-width: 768px) {
+    .circular-video-container {
+      width: 400px;
+      height: 400px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .circular-video-container {
+      width: 320px;
+      height: 320px;
+    }
   }
 
   .circular-video {
@@ -232,6 +294,37 @@ const customStyles = `
     overflow: hidden;
     position: relative;
     box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.35);
+    max-width: 100%;
+  }
+  
+  /* Better floating elements positioning */
+  .floating-elements {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+  
+  /* Responsive adjustments for floating elements */
+  @media (max-width: 768px) {
+    .floating-element-1,
+    .floating-element-2,
+    .floating-element-3,
+    .floating-element-4 {
+      transform: scale(0.8);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .floating-element-1,
+    .floating-element-2,
+    .floating-element-3,
+    .floating-element-4 {
+      transform: scale(0.6);
+    }
   }
 
   .circular-video video {
@@ -239,6 +332,7 @@ const customStyles = `
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
+    max-width: 100%;
   }
 
   .floating-elements {
@@ -290,16 +384,16 @@ const customStyles = `
   .floating-element-1 {
     width: 90px;
     height: 90px;
-    top: -25px;
-    right: -25px;
+    top: -15px;
+    right: -10px;
     background: linear-gradient(135deg, #667eea, #764ba2);
   }
 
   .floating-element-2 {
     width: 70px;
     height: 70px;
-    bottom: -20px;
-    left: -20px;
+    bottom: -10px;
+    left: -10px;
     background: linear-gradient(135deg, #10b981, #059669);
   }
 
@@ -307,7 +401,7 @@ const customStyles = `
     width: 50px;
     height: 50px;
     top: 50%;
-    right: -30px;
+    right: -10px;
     background: linear-gradient(135deg, #f59e0b, #d97706);
   }
 
@@ -315,7 +409,7 @@ const customStyles = `
     width: 60px;
     height: 60px;
     bottom: 30%;
-    left: -30px;
+    left: -10px;
     background: linear-gradient(135deg, #ef4444, #dc2626);
   }
 
@@ -324,8 +418,8 @@ const customStyles = `
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 130%;
-    height: 130%;
+    width: 120%;
+    height: 120%;
     border: 3px solid rgba(102, 126, 234, 0.4);
     border-radius: 50%;
     animation: pulse-ring 2.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
@@ -344,10 +438,10 @@ const customStyles = `
 
   .rotating-border {
     position: absolute;
-    top: -15px;
-    left: -15px;
-    right: -15px;
-    bottom: -15px;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
     border-radius: 50%;
     background: conic-gradient(from 0deg, #667eea, #764ba2, #10b981, #f59e0b, #ef4444, #667eea);
     animation: rotate 10s linear infinite;
@@ -361,10 +455,10 @@ const customStyles = `
   .rotating-border::after {
     content: '';
     position: absolute;
-    top: 8px;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
     background: white;
     border-radius: 50%;
   }
@@ -1097,18 +1191,18 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-inter">
+    <div className="page-container min-h-screen bg-white dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-inter">
       <style>{customStyles}</style>
       
       {/* Floating shapes for visual enhancement */}
-      <div className="floating-shape shape-1"></div>
-      <div className="floating-shape shape-2"></div>
-      <div className="floating-shape shape-3"></div>
+      <div className="floating-shape shape-1 hidden lg:block"></div>
+      <div className="floating-shape shape-2 hidden lg:block"></div>
+      <div className="floating-shape shape-3 hidden lg:block"></div>
       
       <Navbar />
 
       {/* === Hero Section (Modern & Elegant) === */}
-      <section className="relative px-6 lg:px-10 pt-32 pb-64 overflow-hidden">
+      <section className="hero-section relative pt-32 pb-64">
         {/* Background Elements */}
         <motion.div 
           className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-br from-blue-100/40 to-purple-100/40 dark:from-blue-900/20 dark:to-purple-900/20 rounded-full blur-3xl -z-10"
@@ -1441,8 +1535,211 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* === Diagnostics Section === */}
+      <section className="px-6 lg:px-10 py-32 bg-gradient-to-br from-gray-50 via-white to-emerald-50/30 dark:from-slate-900/50 dark:via-slate-900 dark:to-emerald-900/10">
+        <div className="max-w-7xl mx-auto">
+          <motion.div 
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true, threshold: 0.1 }}
+          >
+            <motion.div 
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full text-emerald-700 dark:text-emerald-300 text-sm font-semibold mb-6 border border-emerald-200/50 dark:border-emerald-700/30"
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              viewport={{ once: true, threshold: 0.1 }}
+            >
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+                className="service-icon-container"
+              >
+                <Microscope className="h-4 w-4 mr-2 text-teal-500" />
+              </motion.div>
+              Advanced Diagnostics
+            </motion.div>
+            <motion.h2 
+              className="text-5xl md:text-6xl font-jakarta font-bold mb-6 text-gray-900 dark:text-white"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+              viewport={{ once: true, threshold: 0.1 }}
+            >
+              Precision diagnostics for <span className="text-gradient">accurate results</span>
+            </motion.h2>
+            <motion.p 
+              className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.8 }}
+              viewport={{ once: true, threshold: 0.1 }}
+            >
+              State-of-the-art diagnostic services with rapid turnaround times, comprehensive packages, and expert analysis by certified professionals.
+            </motion.p>
+          </motion.div>
+
+          {/* Diagnostic Categories */}
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            viewport={{ once: true, threshold: 0.1 }}
+          >
+            {/* Blood Tests */}
+            <motion.div 
+              className="group bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-8 hover:shadow-xl hover:shadow-emerald-500/10 dark:hover:shadow-emerald-500/20 transition-all duration-500"
+              whileHover={{ y: -8, scale: 1.02 }}
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.8 }}
+              viewport={{ once: true, threshold: 0.1 }}
+            >
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <Droplet className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Blood Tests</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                Comprehensive blood panels including CBC, metabolic profiles, hormone tests, and specialized markers for early disease detection.
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Starting at ₹299</span>
+                <Link
+                  to="/diagnostics"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center group/link"
+                >
+                  Book Now
+                  <ArrowRight className="h-4 w-4 ml-1 group-hover/link:translate-x-1 transition-transform duration-200" />
+                </Link>
+              </div>
+            </motion.div>
+
+            {/* Imaging Services */}
+            <motion.div 
+              className="group bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-8 hover:shadow-xl hover:shadow-emerald-500/10 dark:hover:shadow-emerald-500/20 transition-all duration-500"
+              whileHover={{ y: -8, scale: 1.02 }}
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.8 }}
+              viewport={{ once: true, threshold: 0.1 }}
+            >
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <Activity className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Imaging Services</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                Advanced imaging including X-rays, ultrasounds, CT scans, and MRIs with AI-powered analysis and expert radiologist review.
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Starting at ₹599</span>
+                <Link
+                  to="/diagnostics"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center group/link"
+                >
+                  Book Now
+                  <ArrowRight className="h-4 w-4 ml-1 group-hover/link:translate-x-1 transition-transform duration-200" />
+                </Link>
+              </div>
+            </motion.div>
+
+            {/* Health Packages */}
+            <motion.div 
+              className="group bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-8 hover:shadow-xl hover:shadow-emerald-500/10 dark:hover:shadow-emerald-500/20 transition-all duration-500"
+              whileHover={{ y: -8, scale: 1.02 }}
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.8 }}
+              viewport={{ once: true, threshold: 0.1 }}
+            >
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <Package className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Health Packages</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                Comprehensive health checkup packages designed for different age groups and health goals with detailed reports and consultations.
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Starting at ₹999</span>
+                <Link
+                  to="/diagnostics"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center group/link"
+                >
+                  Book Now
+                  <ArrowRight className="h-4 w-4 ml-1 group-hover/link:translate-x-1 transition-transform duration-200" />
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Diagnostic Features */}
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.9 }}
+            viewport={{ once: true, threshold: 0.1 }}
+          >
+            {[
+              { icon: Clock, title: "Same Day Results", description: "Most tests completed within 24 hours" },
+              { icon: Shield, title: "NABL Certified", description: "Internationally recognized quality standards" },
+              { icon: Users, title: "Expert Team", description: "Board-certified pathologists & technicians" },
+              { icon: Zap, title: "Home Collection", description: "Free sample collection at your doorstep" }
+            ].map((feature, index) => (
+              <motion.div 
+                key={index}
+                className="text-center p-6"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.0 + (index * 0.1), duration: 0.6 }}
+                viewport={{ once: true, threshold: 0.1 }}
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <feature.icon className="h-6 w-6 text-white" />
+                </div>
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">{feature.title}</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{feature.description}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* CTA for Diagnostics */}
+          <motion.div 
+            className="text-center"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 1.2 }}
+            viewport={{ once: true, threshold: 0.1 }}
+          >
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Link
+                to="/diagnostics"
+                className="inline-flex items-center px-10 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl hover:shadow-xl hover:shadow-emerald-500/25 transition-all duration-300 group"
+              >
+                Book Diagnostic Tests
+                <motion.div
+                  className="ml-2"
+                  whileHover={{ x: 5 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
+                </motion.div>
+              </Link>
+            </motion.div>
+            <p className="text-gray-600 dark:text-gray-400 mt-4 text-sm">
+              Free home collection • Same day results • Expert consultation included
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
       {/* === Stats === */}
-      <section className="px-6 lg:px-10 py-32 bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900 dark:from-slate-900 dark:via-blue-900 dark:to-purple-900 bg-gradient-to-br from-slate-100 via-blue-100 to-purple-100 text-white dark:text-white text-slate-900 dark:text-slate-100 relative overflow-hidden">
+      <section className="px-6 lg:px-10 py-32  dark:from-slate-900 dark:via-teal-900 dark:to-blue-900 bg-gradient-to-br from-slate-100 via-blue-100 to-purple-100 text-white dark:text-white text-slate-300 dark:text-slate-100 relative overflow-hidden">
         {/* Background Elements */}
         <motion.div 
           className="absolute inset-0"
@@ -1476,10 +1773,10 @@ const LandingPage = () => {
               transition={{ delay: 0.2, duration: 0.8 }}
               viewport={{ once: true, threshold: 0.1 }}
             >
-              Trusted by <span className="text-blue-600 dark:text-blue-200">millions</span> worldwide
+              Trusted by <span className="text-blue-600 dark:text-blue-800">millions</span> worldwide
             </motion.h2>
             <motion.p 
-              className="text-xl text-slate-700 dark:text-blue-100/80 max-w-2xl mx-auto"
+              className="text-xl text-slate-300 dark:text-blue-100/80 max-w-2xl mx-auto"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8 }}
