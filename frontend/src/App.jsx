@@ -34,14 +34,6 @@ import DoctorAvailabilityPage from './pages/DoctorAvailabilityPage';
 import AppointmentManagementPage from './pages/AppointmentManagementPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 
-// Development Tools
-import DatabaseSeederPage from './pages/DatabaseSeederPage';
-import RazorpayTestPage from './pages/RazorpayTestPage';
-import ConnectionTestPage from './pages/ConnectionTestPage';
-import SearchDemoPage from './pages/SearchDemoPage';
-import FilterDemoPage from './pages/FilterDemoPage';
-import CompactSearchDemoPage from './pages/CompactSearchDemoPage';
-
 // Payment Pages
 import PaymentsPage from './pages/PaymentsPage';
 
@@ -141,12 +133,12 @@ const AppContent = () => {
             <Route path="/role-selection" element={<RoleSelection />} />
             
             {/* Development tools */}
-            <Route path="/dev/seed" element={<DatabaseSeederPage />} />
+            {/* <Route path="/dev/seed" element={<DatabaseSeederPage />} />
             <Route path="/dev/razorpay" element={<RazorpayTestPage />} />
             <Route path="/dev/connection" element={<ConnectionTestPage />} />
             <Route path="/dev/search-demo" element={<SearchDemoPage />} />
             <Route path="/dev/filter-demo" element={<FilterDemoPage />} />
-            <Route path="/dev/compact-search-demo" element={<CompactSearchDemoPage />} />
+            <Route path="/dev/compact-search-demo" element={<CompactSearchDemoPage />} /> */}
             
             <Route path="/*" element={
               !userRole ? 
